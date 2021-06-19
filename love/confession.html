@@ -1,0 +1,178 @@
+﻿<html>
+<head>
+	<meta charset="utf-8">
+	<title>你若不离不弃 我必生死相依</title>
+	<style type="text/css">
+		body {
+			margin-left: 0px;
+			margin-top: 0px;
+			margin-right: 0px;
+			margin-bottom: 0px;
+			background-color: #FF62FF;
+		}
+		.content {
+			width: 80%;
+			color: #fff;
+			/*height: 100%;*/
+			top: 0px;
+			left: 10%;
+			font-size: 18px;
+			line-height: 25px;
+			font-family: "微软雅黑";
+			margin-top: 0px;
+		}
+		body {
+			color: #FFF;
+			padding: 10px;
+			background: #FFF url(./img/love.jpg) no-repeat left;
+			margin-left: 0px;
+			margin-top: 0px;
+			margin-right: 0px;
+			margin-bottom: 0px;
+		}
+		.des {
+			font-size: 15px;
+			color: #3C3C3C;
+			/*width: 100%;*/
+			text-shadow : 0px 0px 1px #fff;
+			z-index:1000;					
+			right:20px;
+			position:fixed !important;
+			bottom:0px;
+		}
+		.des a {
+			color: #3C3C3C;
+			text-shadow : 0px 0px 1px #fff;
+		}
+	</style>
+	<script src="js/jquery-1.7.1.min.js" language="javascript" type="text/javascript"></script>
+	<script src="js/tao.js" language="javascript" type="text/javascript"></script>
+	<script>
+		if(localStorage["flag_inited"]=="1"){
+			localStorage.clear();
+		}
+		$(document).ready(function(e) {
+
+			/*禁止右键和隐藏鼠标*/
+			$("body").bind("contextmenu", function() {
+				return false;
+			});
+			/*定义文字最底部显示到哪儿*/
+
+			var guangs=["　","|","　","|"];
+			var guangBiao="/";
+			var guangSub=0;
+			var guang=setInterval("$.guang()",120);
+
+			var subs=0;
+			var string="唐江艳…… █我喜欢你██真的很喜欢很喜欢你██你知道吗…每个噩梦惊醒的夜晚...总会依赖的想起你██每当夜深人静想起你的时候……眼泪总是忍不住的往下流██每当流星划过寂静的天边……都会为你许下祝福的心愿██我依旧对你那么思念██不管你怎么样……我对你的爱永远不会改变██我只是个很普通的人……可能配不上你██遇见你，是我生命的幸运；爱上你，是我生命的愉悦；失去你，是我生命的遗憾；没有你，无法感受心灵的震撼。此生惟愿爱你！██一生何须太多，有情才是幸福；一生何求太多，有你就已满足。 ██<-- The End -->██";
+			$.intent=function(str){
+				var together = new Date();
+    			var date_now = together.getFullYear()+'年'+(together.getMonth()+1)+'月'+together.getDate()+'日';
+				str += date_now;
+				str += '██签署人:廖志明';
+		//var reg=new RegExp("/█{1,2}/","i"); //创建正则RegExp对象
+		str=str.replace(eval("/█/gi"),"█");
+
+		return str;
+	}
+	string=$.intent(string);
+	
+	var echo=setInterval("$.echo()",300);
+
+	
+	
+	$.guang=function(){
+		if(guangSub<guangs.length-1){
+			guangSub++;
+		}else{
+			guangSub=0;
+		}
+		guangBiao=guangs[guangSub];
+		$("#guang").html(guangBiao);
+
+	}
+	
+	$.echo=function(){
+		if(subs<string.length){
+			$("#txt").html($("#txt").html()+$.repl(string.substr(subs,1)));
+			if($("#guang").offset().top > document.body.scrollHeight / 2){
+				window.scrollTo(0,$("#guang").offset().top);
+			}
+			$(".des").css("bottom","0px");
+			subs++;
+		}
+	}
+	$.repl=function(str){
+		str=str.replace("\r\n","<br/>");
+		str=str.replace("\n","<br/>");
+		str=str.replace("█","<br/>");
+		return str;
+	}
+});
+
+</script>
+</head>
+
+<body>
+	<center>
+		<div align="left" class="content"><span  id="txt"></span><span id="guang"></span>
+			<span></span>
+		</div>
+	</center>
+
+	<!--下面是浮动的桃心-->
+	<div id="bubbles" style="visibility:hidden">
+		<img src="img/1.png">
+		<img src="img/2.png">
+		<img src="img/1.png">
+	</div>
+	<!---->
+
+	<script src="js/jquery.backstretch.min.js"></script>
+	<script type="text/javascript">
+	var bodyBgs = [    //创建一个数组变量来存储背景图片的路径
+	"img/robocop-1987-wallpaper-2.jpg",
+	"img/ghostbusters-564cdb8dcf00d.jpg",
+	"img/robocop-1987-wallpaper-2.jpg",
+	"img/love.jpg",
+	"img/love1.jpg",
+	"img/love2.jpg"]
+
+	setInterval(function () {
+		var currentImage = bodyBgs[Math.round( Math.random() * bodyBgs.length )];
+		$.backstretch(currentImage, {
+			duration: 3000,
+			fade: 3000,
+			transitionDuration: 1000
+	        }); //元素背景，切换现实
+	}, 5000);
+
+</script>
+
+<audio autoplay="autoplay" loop id='audioBox'>
+</audio>
+<script type="text/javascript"> 
+
+    var arr = ['./music/def.mp3', './music/def.mp3', "./music/区瑞强 - 偏偏喜欢你.mp3", "./music/那些年_-_胡夏.mp3", './music/G.E.M.邓紫棋 - 囚鸟.mp3', './music/田馥甄 - 小幸运.mp3', './music/def.mp3'];      //把需要播放的歌曲从后往前排，这里已添加两首音乐，可继续添加多个音乐 
+    var myAudio = new Audio(); 
+    myAudio.preload = true; 
+    myAudio.controls = true; 
+    myAudio.src = arr[Math.round(Math.random() * (arr.length-1))]
+    // console.log(myAudio.src); 
+    //myAudio.src = arr.pop();         //每次读数组最后一个元素 
+    myAudio.addEventListener('ended', playEndedHandler, false); 
+    myAudio.play(); 
+    document.getElementById("audioBox").appendChild(myAudio); 
+    myAudio.loop = false;//禁止循环，否则无法触发ended事件 
+    function playEndedHandler(){ 
+    //myAudio.src = arr.pop(); 
+    myAudio.src = arr[Math.round(Math.random() * (arr.length-1))]; 
+    myAudio.play(); 
+    console.log(myAudio.src); 
+    !arr.length && myAudio.removeEventListener('ended',playEndedHandler,false);//只有一个元素时解除绑定 
+} 
+
+</script> 
+</body>
+</html>
