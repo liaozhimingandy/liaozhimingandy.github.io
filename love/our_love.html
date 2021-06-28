@@ -19,27 +19,27 @@
                 <span class="comments">'''</span><br />
                 <span class="space"/><span class="comments">今天是个特殊的日子,</span><br />
                 <span class="space"/><span class="comments">所以我打算用自己的方式来表达我对你的爱...</span><br />
-                <span class="space"/><span class="comments">'''</span><br />
-                liaozhiming = <span class="keyword">new</span> Boy(<span class="string">"廖志明"</span>)<br />
-                tangjiangyan = <span class="keyword">new</span> Girl(<span class="string">"唐江艳"</span>)<br />
+                <span class="comments">'''</span><br />
+                liaozhiming = Boy(<span class="string">"廖志明"</span>)<br />
+                tangjiangyan = Girl(<span class="string">"唐江艳"</span>)<br />
                 <span class="comments"># 2019年12月8日,我们相识于人海茫茫之中...</span><br />
                 liaozhiming.meet(tangjiangyan)<br />
                 <span class="comments"># 2019年12月8日-<span id='date_now'></span>,我们经历了相知相恋...</span><br />
                 liaozhiming.loving(tangjianyan)<br />
-                <span class="comments"># 在这个特殊的日子,我想对你说,往后余生,我希望与你相守</span><br />
-                liaozhiming.say_hope_loveyou_forever()<br />
+                <span class="comments"># 在这个特殊的日子,我想对你说,接下来的日子里,我想和你继续相守</span><br />
+                liaozhiming.say_hope_loveyou_forever(tangjiangyan)<br />
                 <span class="comments"># 你说,我平时需要多关心一下你,多陪一下你, 多善于表达一下自己</span><br />
                 <span class="comments"># And take care of u and our love.</span><br />
                 liaozhiming.take_care_of(tangjiangyan)<br />
-                <span class="comments"># 所以我一直在努力，我有信心，我会。</span><br />
+                <span class="comments"># 所以我一直在努力,我有信心,我会去做好这些</span><br />
                 <span class="comments"># 你问我对你的爱时间有多久.</span><br />
-                <span class="comments">love_time_limit = </span>  <span class="keyword">true</span><br />
-                <span class="keyword">while</span>(love_time_limit):<br />
+                <span class="comments">love_time_no_limit = </span>  <span class="keyword">true</span><br />
+                <span class="keyword">while</span>(love_time_no_limit):<br />
                 <span class="placeholder"/><span class="comments"># 有一份真挚的感情摆在我的面前，我不想等我失去的时候才追悔莫及,人间最痛苦的事莫过于此,接下来,我会对那个女孩说三个字：我爱你，如果非要在这份爱上加一个期限，我希望是余生！</span><br />
                 <span class="placeholder"/>liaozhiming.love(tangjiangyan)<br />
                 <span class="placeholder"/><span class="comments"># 执子之手,与子偕老.</span><br />
                 <span class="placeholder"/><span class="comments"># 往后余生我陪你走</span><br />
-                <span class="placeholder"/>liaozhiming.say_loveyou_forever()<br />
+                <span class="placeholder"/>liaozhiming.say_loveyou_forever(tangjiangyan)<br />
                 <span class="comments"># 你让我知道从激情到亲情,从感动到感恩,从浪漫到相守.时间越久,感情越深,越浓...</span><br />
                 tangjianyan.marry_with(liaozhiming)<br />
                 liaozhiming.live_happily_with(tangjianyan)<br />
@@ -49,10 +49,10 @@
                 <canvas id="garden" class="animated infinite pulse"></canvas>
                 <div id="words">
                     <div id="messages">
-                       亲爱的唐江艳，这是我们相爱在一起的时光
+                       亲爱的唐江艳,这是我们相爱在一起的时光!
                        <div id="elapseClock"></div>
-                       <div id="loveu">&nbsp; &nbsp;爱你，直到永永远远。<br/>
-                           <div class="signature animated infinite pulse">- <a href="confession.html" style="text-decoration: none;">廖先生</a></div>
+                       <div id="loveu">&nbsp; &nbsp;爱你,直到永永远远!<br/>
+                           <div class="signature animated infinite pulse">- <a href="confession.html" style="text-decoration: none; ">廖先生</a></div>
                        </div>
                    </div>
                </div>

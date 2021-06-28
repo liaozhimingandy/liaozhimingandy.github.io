@@ -89,14 +89,13 @@
 body {
     color: #FFF;
     padding: 10px;
-    background: #343a40 url(../img/love.jpg) right no-repeat;
+    background: url(../img/love.jpg) right no-repeat;
     margin-left: 0px;
     margin-top: 0px;
     margin-right: 0px;
     margin-bottom: 0px;
-  
-    height: auto;
-
+    /*设置背景图片占全屏*/
+    background-size: cover;
 }
 #errorMsg {
     width:100%;
