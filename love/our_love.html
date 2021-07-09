@@ -112,12 +112,14 @@
         //配置背景
         setInterval(function () {
             var currentImage = bodyBgs[Math.round(Math.random()*bodyBgs.length)];
+            var random_offset = Math.round(Math.random()*3000+3000)
             $.backstretch(currentImage, {
-                duration: 3000,
-                fade: 3000,
-                transitionDuration: 1000
+                duration: random_offset,
+				fade: 8000-random_offset,
+                // transitionDuration: 3000,
+                pixelRatio: "auto"
             }); //元素背景，切换现实
-        }, 5000);
+        }, 8000);
     }, 90000)
     }
 </script>
@@ -130,7 +132,8 @@
             "./music/区瑞强 - 偏偏喜欢你.mp3", 
             "./music/那些年_-_胡夏.mp3", 
             './music/田馥甄 - 小幸运.mp3',
-            './music/def.mp3'
+            './music/def.mp3',
+            './music/你是人间四月天(Live)-邵帅.mp3'
         ];
         var myAudio = new Audio(); 
         myAudio.preload = true; 
