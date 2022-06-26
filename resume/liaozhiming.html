@@ -1,4 +1,7 @@
+
 <!DOCTYPE html>
+
+
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,7 +9,7 @@
     <!--
     <link rel="stylesheet" href="bootstrap-4.3.1-dist/css/bootstrap.min.css"/>-->
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.2/animate.css">
+    <link href="https://cdn.bootcdn.net/ajax/libs/animate.css/3.7.2/animate.min.css" rel="stylesheet">
     <link href="https://cdn.bootcss.com/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
     <!--<link rel="stylesheet" href="css/font-awesome.min.css">-->
     <link href="https://cdn.bootcss.com/font-awesome/3.2.1/css/font-awesome.min.css" rel="stylesheet">
@@ -47,7 +50,7 @@
                                 </h5>
                                 <h5>
                                     <small><span class="icon-phone m-1"></span>
-                                        <a href="tel:18688708154" class="text-muted">18688708154</a>
+                                        <a href="tel:{ basic_info.contact_phone}}" class="text-muted">18688708154</a>
                                     </small>
                                 </h5>
                                 <h5>
@@ -70,54 +73,61 @@
                 <small class="font-weight-bold">自我描述</small>
             </h4>
             <hr class="w-auto"/>
-            <p class="text-muted">
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;愿意吃苦受累,通过自己富有激情,积极主动的努力实现自身价值。作风优良,待人诚恳,人际关系良好,处事冷静稳健,能合理地统筹安排生活中的事务。具备较强的逻辑思维和判断能力,对事情认真负责,有很强的责任心和团队意识;自信,乐观,具有一定的创新意识和创造能力;</p>
+            <div class="text-muted">
+                <p>愿意吃苦受累,通过自己富有激情,积极主动的努力实现自身价值。作风优良,待人诚恳,人际关系良好,处事冷静稳健,能合理地统筹安排生活中的事务。具备较强的逻辑思维和判断能力,对事情认真负责,有很强的责任心和团队意识;自信,乐观,具有一定的创新意识和创造能力;</p>
+            </div>
         </div>
-        <!--工作经历-->
-        <div class="row m-auto">
+
+        <div class="row m-auto pb-2">
+              <!--工作经历-->
             <div class="col-lg-8 col-12">
                 <div>
                     <h4>
                         <small class="font-weight-bold">工作经历</small>
                     </h4>
-                    <!--第三份工作-->
                     <hr class="w-auto">
                     <div>
+                        
                         <!--工作担任角色,年限以及公司名称介绍-->
                         <div class="row">
                             <div class="col-12 col-lg-4">
                                 <div class="col-12">
-                                    <B class="font-weight-bold">软件工程师<span class="badge badge-primary">Now</span></B>
+                                    <B class="font-weight-bold">软件工程师
+                                        
+                                        <span
+                                            class="badge badge-primary">Now</span>
+                                        
+                                    </B>
                                 </div>
                                 <div class="col-12 text-muted">
-                                    2019.11-至今
+                                    2019-11~
                                 </div>
                             </div>
                             <div class="col-12 col-lg-8 text-right">恺恩泰(北京)科技有限公司<span
                                     class="badge badge-primary">No3</span></div>
                         </div>
                         <!--工作内容描述-->
-                        <div class="col-12">
-                            <p class="text-muted">
-                               在2019年11月至2021年2月期间在浙江省肿瘤医院进行项目建设,此期间在该医院进行互联互通四甲评测进行协助,负责医院BI建设,为医院人员提供相应数据,梳理主数据标准;2021年2月至目前在深圳罗湖区罗湖医院集团进行互联互通建设,全面负责集成平台建设,从底层引擎环境部署架构实施到业务的梳理和部署及平稳运行的保障,期间还负责公司其它系统像患者主索引,主数据及消息追踪等多个系统,协助医院过互联互通四甲
-                            </p>
-                        </div>
-                        <!--多个项目-->
-                        <!--第一个项目介绍-->
-                        <div class="col-12">
-                            <B>
-                                项目二简介:
-                            </B>
-                            <p class="text-muted">负责深圳罗湖医院集团集成平台建设,从项目开始到项目平稳运行全程参与,其它主要内容包括但不局限于rhapsody集成引擎的部署高可用架构设计,接口设计,接口落地生产环境使用,消息场景梳理,体检相关流程配合医院实际业务流程梳理等内容</p>
-                        </div>
-                        <!--工作中主要负责的重点内容-->
                         <div class="col-12 text-muted">
-                            <ul>
-                                <li>罗湖医院集团人民医院互联互通;</li>
-                                <li>Docker容器化Rhapsody集成引擎;</li>
-                                <li>cda建模,落地,并构建cda</li>
-                                <li>负责集团集成平台建设</li>
-                            </ul>
+                            <p>在2019年11月至2021年2月期间在浙江省肿瘤医院进行项目建设,此期间在该医院进行互联互通四甲评测进行协助,负责医院BI建设,为医院人员提供相应数据展示，找出可以优化的地方,梳理主数据标准，该标准国家互联互通测评需要，以及为医院建设提供标准参考;2021年2月至目前在深圳罗湖区罗湖医院集团进行互联互通建设,全面负责集成平台建设,从底层引擎环境部署架构实施到业务的梳理和部署及平稳运行的保障,期间还负责公司其它系统像患者主索引,主数据及消息追踪等多个系统,协助医院过互联互通四甲</p>
+
+<p><strong>项目简介:</strong></p>
+
+<p>负责深圳罗湖医院集团集成平台建设,从项目开始到项目平稳运行全程参与,其它主要内容包括但不局限于rhapsody集成引擎的部署高可用架构设计,接口设计,接口落地生产环境使用,消息场景梳理,体检相关流程配合医院实际业务流程梳理等内容</p>
+
+<ul>
+	<li>罗湖医院集团人民医院互联互通;</li>
+	<li>Docker容器化Rhapsody集成引擎;</li>
+	<li>cda建模,落地,并负责cda xml的生成；</li>
+	<li>接口开发，让各厂商系统接入医院集成平台；</li>
+</ul>
+
+<p>在浙肿项目上主要负责集成平台建设和BI应用建设以及开发;MDM数据(标准WS363, WS364)整理;</p>
+
+<ul>
+	<li>浙江省肿瘤医院互联互通;</li>
+	<li>BI建设</li>
+	<li>主数据(标准WS363, WS364)标准整理;</li>
+</ul>
                         </div>
                         <!--工作中主要使用到的关键技术-->
                         <div class="col-12">
@@ -125,87 +135,63 @@
                                 使用到技术:
                             </B>
                             <div>
-                                <span class="badge badge-primary">Rhapsody集成引擎</span>
-                                <span class="badge badge-secondary">SQL Server</span>
-                                <span class="badge badge-success">Git</span>
-                                <span class="badge badge-danger">Python</span>
-                                <span class="badge badge-warning">容器技术</span>
-                                <span class="badge badge-info">Django</span>
-                                <span class="badge badge-light">https</span>
-                                <span class="badge badge-dark">消息中间件</span>
-                                <span class="badge badge-primary">Elasticsearch</span>
+                                
+                                <span class="badge badge-light">Rhpsody集成引擎</span>
+                                
+                                <span class="badge badge-light">SQL Server</span>
+                                
+                                <span class="badge badge-secondary">Git</span>
+                                
+                                <span class="badge badge-primary">Docker</span>
+                                
+                                <span class="badge badge-dark">Python</span>
+                                
+                                <span class="badge badge-secondary">freemarker</span>
+                                
+                                <span class="badge badge-warning">JavaScript</span>
+                                
+                                <span class="badge badge-light">centos7</span>
+                                
+                                <span class="badge badge-info"> nginx</span>
+                                
+                                <span class="badge badge-dark"> webservice</span>
+                                
+                                <span class="badge badge-secondary"> elasticsearch</span>
+                                
                             </div>
                         </div>
-                      <!--第二个项目-->
-                       <div class="col-12">
-                            <B>
-                                项目一简介:
-                            </B>
-                            <p class="text-muted">项目上主要负责消息场景应用和部署以及开发;MDM数据(标准WS363, WS364)整理;</p>
-                        </div>
-                        <!--工作中主要负责的重点内容-->
-                        <div class="col-12 text-muted">
-                            <ul>
-                                <li>浙江省肿瘤医院互联互通;</li>
-                                <li>Docker容器化Rhapsody集成引擎;</li>
-                                <li>BI建设</li>
-                                <li>主数据(标准WS363, WS364)整理;</li>
-                            </ul>
-                        </div>
-                        <!--工作中主要使用到的关键技术-->
-                        <div class="col-12">
-                            <B>
-                                使用到技术:
-                            </B>
-                            <div>
-                                <span class="badge badge-primary">Rhapsody集成引擎</span>
-                                <span class="badge badge-secondary">SQL Server</span>
-                                <span class="badge badge-success">Git</span>
-                                <span class="badge badge-danger">Python</span>
-                                <span class="badge badge-warning">Docker</span>
-                                <span class="badge badge-info">Django</span>
-                                <span class="badge badge-light">Gitbook</span>
-                                <span class="badge badge-dark">FineReport</span>
-                                <span class="badge badge-primary">Elasticsearch</span>
-                            </div>
-                        </div>
-                    </div>
-                    <!--第三份工作结束-->
-                    <!--第二份工作-->
-                    <hr class="w-auto">
-                    <div>
+                        
+                         <hr class="w-auto">
+                        
+                        
                         <!--工作担任角色,年限以及公司名称介绍-->
                         <div class="row">
                             <div class="col-12 col-lg-4">
                                 <div class="col-12">
-                                    <B class="font-weight-bold">软件工程师</B>
+                                    <B class="font-weight-bold">软件工程师
+                                        
+                                    </B>
                                 </div>
                                 <div class="col-12 text-muted">
-                                    2019.04-2019.10.31
+                                    2019-03~2019-11
                                 </div>
                             </div>
                             <div class="col-12 col-lg-8 text-right">江苏振邦智慧城市信息系统有限公司<span
-                                    class="badge badge-secondary">No2</span></div>
+                                    class="badge badge-primary">No2</span></div>
                         </div>
                         <!--工作内容描述-->
-                        <div class="col-12">
-                            <p class="text-muted">
-                                进入公司主要在负责中山大学孙逸仙纪念医院进行集成平台开放,为实现医院信息化四甲而进行HL7V3版本开发;在公司绝大部分时间在中二项目上;</p>
-                        </div>
-                        <!--工作中主要成就,贡献-->
-                        <div class="col-12">
-                            <B>
-                                项目简介:
-                            </B>
-                            <p class="text-muted">项目上主要负责消息场景应用和部署以及开发;从集成平台环境搭建到集成平台环境的整体交付乃至后续技术支持</p>
-                        </div>
-                        <!--工作中主要负责的重点内容-->
                         <div class="col-12 text-muted">
-                            <ul>
-                                <li>中山大学孙逸仙纪念医院(HL7 V3版本)</li>
-                                <li>灵璧县人民医院(HL7 V2版本)</li>
-                                <li>西安国际医学(HL7 V2和V3版本)</li>
-                            </ul>
+                            <p>进入公司主要在负责中山大学孙逸仙纪念医院进行集成平台开放,为实现医院信息化四甲而进行HL7V3版本开发;在公司绝大部分时间在中二项目上;</p>
+
+<p><strong>项目简介:</strong></p>
+
+<p>项目上主要负责消息场景应用和部署以及开发;从集成平台环境搭建到集成平台环境的整体交付乃至后续技术支持</p>
+
+<ul>
+	<li>中山大学孙逸仙纪念医院(HL7 V3版本)</li>
+	<li>灵璧县人民医院(HL7 V2版本)</li>
+	<li>西安国际医学(HL7 V2和V3版本)</li>
+</ul>
                         </div>
                         <!--工作中主要使用到的关键技术-->
                         <div class="col-12">
@@ -213,75 +199,83 @@
                                 使用到技术:
                             </B>
                             <div>
-                                <span class="badge badge-primary">Orion集成平台</span>
-                                <span class="badge badge-secondary">SQL</span>
-                                <span class="badge badge-success">Git</span>
-                                <span class="badge badge-danger">Docker</span>
+                                
+                                <span class="badge badge-warning">Rhapsody集成引擎</span>
+                                
+                                <span class="badge badge-secondary">SQL Server</span>
+                                
+                                <span class="badge badge-secondary">Git</span>
+                                
+                                <span class="badge badge-primary">Docker</span>
+                                
                                 <span class="badge badge-warning">Python</span>
-                                <span class="badge badge-info">Django</span>
-                                <span class="badge badge-light">Bootstrap</span>
-                                <span class="badge badge-dark">Oracle</span>
+                                
+                                <span class="badge badge-warning">Bootstrap</span>
+                                
+                                <span class="badge badge-primary">Oracle</span>
+                                
+                                <span class="badge badge-success"> gitbook</span>
+                                
                             </div>
                         </div>
-                    </div>
-                    <!--第二份工作结束-->
-                </div>
-
-
-                <!--第一份工作-->
-                <div>
-                    <hr class="w-auto">
-                    <div style="padding-bottom: 20px;">
+                        
+                         <hr class="w-auto">
+                        
+                        
                         <!--工作担任角色,年限以及公司名称介绍-->
                         <div class="row">
                             <div class="col-12 col-lg-4">
                                 <div class="col-12">
-                                    <span class="font-weight-bold">软件研发工程师</span>
+                                    <B class="font-weight-bold">软件工程师
+                                        
+                                    </B>
                                 </div>
                                 <div class="col-12 text-muted">
-                                    2017.03-2019.04
+                                    2017-07~2019-03
                                 </div>
                             </div>
                             <div class="col-12 col-lg-8 text-right">广州惠侨计算机科技有限公司<span
-                                    class="badge badge-dark">No1</span></div>
+                                    class="badge badge-primary">No1</span></div>
                         </div>
                         <!--工作内容描述-->
-                        <div class="col-12">
-                            <p class="text-muted">负责第三方接口开发,集成平台部署,测试用例编写,数据迁移脚本
-                                编写,住院和门诊流程梳理绘制流程图,CDR 建模、报表定制开发
-                            </p>
-                        </div>
-                        <!--工作中主要负责的重点内容-->
-                        <div class="col-12">
+                        <div class="col-12 text-muted">
+                            <p>负责第三方接口开发,集成平台部署,测试用例编写,数据迁移脚本 编写,住院和门诊流程梳理绘制流程图,CDR 建模、报表定制开发</p>
 
-                            <B>服务对象:</B>
+<p><strong>服务对象:</strong></p>
 
-                            <ul class="text-muted">
-                                <li>中山人民医院</li>
-                                <li>高州中医药</li>
-                                <li>新会人民医院</li>
-                                <li>荆门一医</li>
-                                <li>广医五院</li>
-                            </ul>
+<ul>
+	<li>中山人民医院</li>
+	<li>高州中医药</li>
+	<li>新会人民医院</li>
+	<li>荆门一医</li>
+	<li>广医五院</li>
+</ul>
                         </div>
                         <!--工作中主要使用到的关键技术-->
                         <div class="col-12">
-
-                            <B>使用到技术:</B>
-
+                            <B>
+                                使用到技术:
+                            </B>
                             <div>
-                                <span class="badge badge-primary">Orion集成平台</span>
-                                <span class="badge badge-secondary">SQL</span>
-                                <span class="badge badge-success">SVN</span>
-                                <span class="badge badge-danger">Project</span>
-                                <span class="badge badge-warning">JavaScript</span>
-                                <span class="badge badge-light">Bootstrap</span>
-                                <span class="badge badge-dark">SQL Server</span>
+                                
+                                <span class="badge badge-danger">Orion集成平台</span>
+                                
+                                <span class="badge badge-light">SQL Server</span>
+                                
+                                <span class="badge badge-success">Git</span>
+                                
+                                <span class="badge badge-warning">Python</span>
+                                
+                                <span class="badge badge-info">api</span>
+                                
+                                <span class="badge badge-secondary">webservice</span>
+                                
                             </div>
                         </div>
+                        
+                        
                     </div>
                 </div>
-                <!--第一份工作结束-->
             </div>
             <!--右边显示-->
             <div class="col-lg-4 col-12">
@@ -291,75 +285,116 @@
                 </h4>
                 <hr class="w-auto"/>
                 <div class="col-12">
-                    <B>编程语言</B>
-                    <div>Python
+                    <B>主要技能</B>
+                    
+                    
+                    <div>Rhapsody集成引擎
                         <div class="progress">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
-                                 style="width: 80%" aria-valuenow="50"
-                                 aria-valuemin="0" aria-valuemax="100"></div>
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                 role="progressbar"
+                                 style="width:90%" aria-valuenow="50"
+                                 aria-valuemin="0" aria-valuemax="100">
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        Rhapsody集成引擎
-                        <div class="progress">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-dark"
-                                 role="progressbar" style="width: 90%" aria-valuenow="75"
-                                 aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                    </div>
+                    <!--其它技能区域-->
+                    
+                    
+                    
                     <div>SQL Server
                         <div class="progress">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-danger"
-                                 role="progressbar" style="width: 90%" aria-valuenow="50"
-                                 aria-valuemin="0" aria-valuemax="100"></div>
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-secondary"
+                                 role="progressbar"
+                                 style="width:80%" aria-valuenow="50"
+                                 aria-valuemin="0" aria-valuemax="100">
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        Django
-                        <div class="progress">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
-                                 role="progressbar" style="width: 75%" aria-valuenow="75"
-                                 aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                    </div>
-                    <div>
-                        Elasticsearch
-                        <div class="progress">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
-                                 role="progressbar" style="width: 65%" aria-valuenow="70"
-                                 aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                    </div>
-                    <div>Gitbook
+                    <!--其它技能区域-->
+                    
+                    
+                    
+                    <div>Docker
                         <div class="progress">
                             <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
-                                 role="progressbar" style="width: 95%" aria-valuenow="70"
-                                 aria-valuemin="0" aria-valuemax="100"></div>
+                                 role="progressbar"
+                                 style="width:70%" aria-valuenow="50"
+                                 aria-valuemin="0" aria-valuemax="100">
+                            </div>
                         </div>
                     </div>
-                    <div>
-                        Docker
-                        <div class="progress">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
-                                 role="progressbar" style="width: 75%" aria-valuenow="70"
-                                 aria-valuemin="0" aria-valuemax="100"></div>
-                        </div>
-                    </div>
-
                     <!--其它技能区域-->
-                    <B>其它</B>
-
-                    <div>
-                        <span class="badge badge-pill badge-primary btn-lg">Restful</span>
-                        <span class="badge badge-pill badge-info">Git</span>
-                        <span class="badge badge-pill badge-light">tensorflow</span>
-                        <span class="badge badge-pill badge-success">Project</span>
-                        <span class="badge badge-pill badge-danger">gitbook</span>
-                        <span class="badge badge-pill badge-secondary">Docker</span>
-                        <span class="badge badge-pill badge-warning">github</span>
-                        <span class="badge badge-pill badge-dark">Bootstrap</span>
-                        <span class="badge badge-pill badge-primary">Elasticsearch</span>
+                    
+                    
+                    
+                    <div>Python
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                                 role="progressbar"
+                                 style="width:70%" aria-valuenow="50"
+                                 aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
                     </div>
+                    <!--其它技能区域-->
+                    
+                    
+                    
+                    <div>Django
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                 role="progressbar"
+                                 style="width:65%" aria-valuenow="50"
+                                 aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+                    <!--其它技能区域-->
+                    
+                    
+                    
+                    <B>其它</B>
+                    <div>
+                        <span class="badge badge-pill badge-dark btn-lg">Elasticsearch</span>
+                        
+                    
+                    
+                    <span class="badge badge-pill badge-primary btn-lg">gitbook</span>
+                    
+                    
+                    
+                    <span class="badge badge-pill badge-danger btn-lg">PMP</span>
+                    
+                    
+                    
+                    <span class="badge badge-pill badge-info btn-lg">django-rest-framework</span>
+                    
+                    
+                    
+                    <span class="badge badge-pill badge-primary btn-lg">Git</span>
+                    
+                    
+                    
+                    <span class="badge badge-pill badge-danger btn-lg">nginx</span>
+                    
+                    
+                    
+                    <span class="badge badge-pill badge-warning btn-lg">kafka</span>
+                    
+                    
+                    
+                    <span class="badge badge-pill badge-danger btn-lg">Centos</span>
+                    
+                    
+                    
+                    <span class="badge badge-pill badge-success btn-lg">Bootstrap</span>
+                    
+                    
+                    
+                        <span class="badge badge-pill badge-primary btn-lg">tensorflow</span>
+                    </div>
+                    
+                    
                 </div>
                 <!--教育区域-->
                 <h4 style="margin-top: 5%">
@@ -367,17 +402,28 @@
                 </h4>
                 <hr class="w-auto"/>
                 <div class="col-12">
-                    <B>软件工程学士学位</B>
+                    
+                    <B>PMP证书<span class="badge badge-primary">3</span></B>
+                    <br/>51cto
+                    <h6>
+                        <small class="text-muted">2021-03-01~2021-10-01</small>
+                    </h6>
+                    <div class="text-muted"><p>获取具有国际认证的项目管理证书</p></div>
+                    
+                    <B>软件工程学士学位<span class="badge badge-primary">2</span></B>
                     <br/>东华理工大学
                     <h6>
-                        <small class="text-muted">2013.09-2017.07</small>
+                        <small class="text-muted">2013-09-01~2017-07-01</small>
                     </h6>
-                    <p class="text-muted">全日制全国统招大学本科;软件工程专业;大学期间自学编程:<b>JAVA,ANDROID,PHP,PYTHON</b>以及<b>Bootstrap</b>等框架,对计算机热爱,课余时间根据传智播客-黑马培训视频自学并编写代码,大学毕业论文为完成<b>android</b>基于二十四点应用程序;
-                    </p>
-                    <p><span style="font-weight: 700">全国普通高中毕业</span><br/>
-                        <span>兴国平川中学</span><br/>
-                        <span> <small class="text-muted">2010.09-2013.07</small></span>
-                    </p>
+                    <div class="text-muted"><p>全日制全国统招大学本科;软件工程专业;大学期间自学编程:<strong>JAVA,ANDROID,PHP,PYTHON</strong>以及<strong>Bootstrap</strong>等框架,对计算机热爱,课余时间根据传智播客-黑马培训视频自学并编写代码,大学毕业论文为完成<strong>android</strong>基于二十四点应用程序;</p></div>
+                    
+                    <B>全国普通高中毕业<span class="badge badge-primary">1</span></B>
+                    <br/>兴国平川中学
+                    <h6>
+                        <small class="text-muted">2010-09-01~2013-07-01</small>
+                    </h6>
+                    <div class="text-muted"><p>高中毕业</p></div>
+                    
                 </div>
                 <!--兴趣爱好部分-->
                 <p>
@@ -386,8 +432,7 @@
                 </h4>
                 <hr class="w-auto"/>
                 <div class="col-12 text-muted">
-                    <b>跑步:</b>一个良好的锻炼习惯是好好工作的保证;每天坚持锻炼;<br/>
-                    <!--<b>骑车:</b>项目工作期间,每周组织骑车;-->
+                  <p><strong>跑步:</strong>一个良好的锻炼习惯是好好工作的保证;每天坚持锻炼;</p>
                 </div>
                 </p>
             </div>
@@ -445,9 +490,9 @@
         <div class="spinner-border text-primary spinner-border-sm" role="status">
             <span class="sr-only">Loading...</span>
         </div>
-        <B>&bull;</B>廖志明(Andy Liao)&copy;<span id="years_now" class="font-weight-bold"></span>
+        <B>&bull;</B>廖志明(Andy)&copy;<span id="years_now" class="font-weight-bold"></span>
         <span class="font-weight-bold">All&nbsp;Rights&nbsp;Reserved</span><B>&bull;</B>
-        Version:2.1
+        Version:3.0<B>&bull;</B>以上样式由系统自动生成
     </h6>
 </div>
 
