@@ -18,8 +18,8 @@ font-size: 14px; */
  </head> 
  <body> 
   <div class="text-bg-dark p-3 text-center">
-    <B>标准值域表(仅限于CDA文档值域校验参考)</B>
-  </div> 
+    <B>标准值域表(仅限于CDA文档值域校验参考)&bull;<span class="text-center"><a href="mailto:liaozhimingandy@qq.com" class="text-light" style="text-decoration: none;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="通过邮件联系我们;邮箱地址: liaozhimingandy@qq.com">联系我们补充</a></span></B>
+  </div>
   <div class="container bg-light pt-2"> 
    <table class="table table-striped table-hover" id="datatables"> 
     <thead> 
@@ -39,7 +39,8 @@ font-size: 14px; */
         <span class="font-weight-bold">All&nbsp;Rights&nbsp;Reserved</span>
    </p>
   <script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script> 
-  <script src="https://cdn.datatables.net/v/bs5/dt-1.13.4/fh-3.3.2/sc-2.1.1/datatables.min.js"></script> 
+  <script src="https://cdn.datatables.net/v/bs5/dt-1.13.4/fh-3.3.2/sc-2.1.1/datatables.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
   <script type="text/javascript">
         // 这是要展示的数据
       var dataSet = [
@@ -96,7 +97,11 @@ font-size: 14px; */
             const now = new Date();
             const year = now.getFullYear();
             $("#years_now").html(year);
-        })
+        });
+
+        //初始化提示框，必需要写这一步
+       const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+       const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
         </script>  
  </body>
 </html>
