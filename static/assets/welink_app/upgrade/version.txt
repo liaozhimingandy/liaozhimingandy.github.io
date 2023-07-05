@@ -8,5 +8,5 @@
     "ModifyContent": "\r\n1、增加注册界面。\r\n2、完善在线自动更新逻辑。",
     "DownloadUrl": "https://github.com/liaozhimingandy/liaozhimingandy.github.io/releases/download/1.0/app-release.apk",
     "ApkSize": 52533,
-    "ApkMd5": "213fe6071b140fdfd99daa462d394bfd"
+    "ApkMd5": "ee52ee0e37214f8612f806d525c77180"
 }
