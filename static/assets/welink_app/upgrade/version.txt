@@ -2,6 +2,7 @@
     "Code": 0,
     "Msg": "",
     "UpdateStatus": 1,
+<<<<<<< HEAD
     "VersionCode": 3,
     "VersionName": "1.0.3",
     "UploadTime": "2023-07-04 17:28:41",
@@ -9,4 +10,13 @@
     "DownloadUrl": "https://www.alsoapp.com/static/assets/welink_app/upgrade/app-release.apk",
     "ApkSize": 53545418,
     "ApkMd5": "E4B79A36EFB9F17DF7E3BB161F9BCFD8"
+=======
+    "VersionCode": 5,
+    "VersionName": "1.0.2",
+    "UploadTime": "2023-07-10 17:28:41",
+    "ModifyContent": "\r\n1、优化api接口。\r\n2、添加使用demo演示。\r\n3、新增自定义更新服务API接口。\r\n4、优化更新提示界面。",
+    "DownloadUrl": "https://github.com/liaozhimingandy/liaozhimingandy.github.io/releases/download/1.0/app-release.apk",
+    "ApkSize": 52,
+    "ApkMd5": "4ae5e12d5564b890bf0c0554fec7f18f"
+>>>>>>> 24cbe07cf25b6f49e04a047a678932c9dd00bab9
 }
