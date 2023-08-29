@@ -8,7 +8,7 @@
   <link href="https://cdn.datatables.net/v/bs5/dt-1.13.4/fh-3.3.2/sc-2.1.1/datatables.min.css" rel="stylesheet" /> 
   <style rel="stylesheet">
 body {
-background: #E9EBEE;
+background: #F0F2F5;
 font-family: -apple-system-font, BlinkMacSystemFont, Microsoft YaHei, Microsoft YaHei UI, Helvetica Neue, PingFang SC, Hiragino Sans GB, Arial, sans-serif;
 /* font-size: .875rem;
 font-size: 14px; */
@@ -17,7 +17,7 @@ font-size: 14px; */
 </style> 
  </head> 
  <body> 
-  <div class="text-bg-dark p-3 text-center">
+  <div class="text-bg-primary p-3 text-center">
     <B>标准值域表(仅限于CDA文档及交互服务值域校验参考)-2023版&bull;<span class="text-center"><a href="mailto:liaozhimingandy@qq.com" class="text-light" style="text-decoration: none;" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-custom-class="custom-tooltip" data-bs-title="通过邮件联系我们;邮箱地址: liaozhimingandy@qq.com">联系我们补充</a></span></B>
   </div>
   <div class="container bg-light pt-2"> 
@@ -65,20 +65,20 @@ font-size: 14px; */
                   next: "下一页",
                   last: "末页"
               },
-              "info": "第_PAGE_页,共_PAGES_页",
-              "infoEmpty": "未找到相关数据",
-              "search": "关键字",
-              "zeroRecords": "未找到相关数据",
-              "sInfoFiltered": "(数据表中共为 _MAX_ 条记录)",
-              "decimal": ".",
-              "thousands": ",",
-              "oAria": {
+              info: "第_PAGE_页,共_PAGES_页",
+              infoEmpty: "未找到相关数据",
+              search: "关键字",
+              zeroRecords: "未找到相关数据",
+              sInfoFiltered: "(数据表中共为 _MAX_ 条记录)",
+              decimal: ".",
+              thousands: ",",
+              oAria: {
                   "sSortAscending": ": 以升序排列此列",
                   "sSortDescending": ": 以降序排列此列"
                 }
           },
           serverSid: true,
-          "ajax": "https://www.alsoapp.com/more/list-hip-service-values-range.json",
+          ajax: "https://www.alsoapp.com/more/list-hip-service-values-range.json",
            "fnDrawCallback": function(){
          　　var api = this.api();
             var startIndex= api.context[0]._iDisplayStart;//获取到本页开始的条数
