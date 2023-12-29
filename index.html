@@ -22,7 +22,7 @@
                 </span>
             </div>
         </nav>
-
+        <br>
         <div class="alert alert-warning alert-dismissible fade show" role="alert">
             <strong>
                 <a href="./products/" class="text-muted">点击此处打开继续浏览</a>
@@ -30,17 +30,21 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
 
-        <div id="main2" style="width: 600px;height:400px;">
-            <h6>
+        <div class="card">
+            <h6 class="card-header">
                 请联系我们,我们很乐意为你服务!
             </h6>
-            <img src="/images/contact-us-wechat.jpg" height="400px" />
+            <div class="card-body">
+                <img src="/assets/images/contact-us-wechat.jpg" height="400px" />
+            </div>
         </div>
+
         <div id="main" style="width: 600px;height:400px;"></div>
         <div id="main1" style="width: 600px;height:400px;"></div>
+
         <script>
             // 基于准备好的dom，初始化echarts实例
-                                var myChart = echarts.init(document.getElementById('main'));
+            var myChart = echarts.init(document.getElementById('main'));
                         
                                 // 指定图表的配置项和数据
                                 var option = {
