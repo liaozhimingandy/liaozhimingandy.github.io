@@ -2,7 +2,6 @@
   <iframe ref="iframe" :src="resume" :height="fullHeight" :width="fullWidth"></iframe>
 </template>
 
-
 <script setup>
 import {ref, onMounted, onUnmounted, reactive, computed} from "vue";
 import { useRoute } from 'vue-router'
@@ -24,9 +23,6 @@ const resumes = reactive({
 
 // 当前显示简历
 const resume = computed(() => {
-  if (!resumes[user_id.value]){
-    router.push("/not-found");
-  }
   return resumes[user_id.value]});
 
 // 窗口变化时处理逻辑
@@ -41,6 +37,9 @@ function handleResize(){
 onMounted(() => {
    // 取url中的参数
    user_id.value = route.params.user_id;
+   if(!(user_id.value in resumes)){
+     router.push("/not-found");
+  }
    handleResize();
    window.addEventListener('resize', handleResize);
 })

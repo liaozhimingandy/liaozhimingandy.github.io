@@ -48,20 +48,20 @@ import CopyRight from "@/components/CopyRight";
          "title": "Superset",
          "href": "/products/superset/",
          "to": 'superset',
-         "image_src": "static/superset.svg",
+         "image_src": "/static/superset.svg",
          "lable": ""
        }
        ],
        "other":[{
          "title": "Rhapsody官方文档",
          "href": "https://www.alsoapp.com/docs-rhapsody/6.9.1/?lang=en",
-         "image_src": "static/rhapsody.svg",
+         "image_src": "/static/rhapsody.svg",
          "lable": ""
        },
          {
          "title": "Rhapsody笔记",
          "href": "https://www.alsoapp.com/docs-note-rhapsody/",
-         "image_src": "static/note.svg",
+         "image_src": "/static/note.svg",
          "lable": ""
        }
        ]
