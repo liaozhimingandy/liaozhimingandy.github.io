@@ -15,7 +15,7 @@
         <div class="clearfix">
           <img class="img-thumbnail" style="width:60px; height: 60px;"
                :src="product.image_src" alt="..."  data-src="holder.js/60x60">
-          <span><a :href="product.href" style="text-decoration: none;">{{ product.title }}</a></span>
+          <span><router-link :to="{'name': product.to}" style="text-decoration: none;"> {{ product.title }}</router-link></span>
         </div>
       </div>
     </div>
@@ -47,20 +47,21 @@ import CopyRight from "@/components/CopyRight";
            {
          "title": "Superset",
          "href": "/products/superset/",
-         "image_src": "https://www.alsoapp.com/assets/images/superset.svg",
+         "to": 'superset',
+         "image_src": "static/superset.svg",
          "lable": ""
        }
        ],
        "other":[{
          "title": "Rhapsody官方文档",
          "href": "https://www.alsoapp.com/docs-rhapsody/6.9.1/?lang=en",
-         "image_src": "https://www.alsoapp.com/assets/images/rhapsody.svg",
+         "image_src": "static/rhapsody.svg",
          "lable": ""
        },
          {
          "title": "Rhapsody笔记",
          "href": "https://www.alsoapp.com/docs-note-rhapsody/",
-         "image_src": "https://www.alsoapp.com/assets/images/note.svg",
+         "image_src": "static/note.svg",
          "lable": ""
        }
        ]
