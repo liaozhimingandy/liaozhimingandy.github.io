@@ -1,8 +1,6 @@
 <template>
-  <div class="text-bg-dark p-3 text-center">Demo<B>&nbsp;•&nbsp;</B><span class="text-center"><a
-      href="mailto:liaozhimingandy@qq.com" class="text-light" style="text-decoration: none;" data-bs-toggle="tooltip"
-      data-bs-placement="top" data-bs-custom-class="custom-tooltip"
-      data-bs-title="通过邮件联系我们;邮箱地址: liaozhimingandy@qq.com">联系我们</a>
+  <div class="text-bg-dark p-3 text-center">Demo<B>&nbsp;•&nbsp;</B><span class="text-center">
+    <MyTooltip></MyTooltip>
       </span>
   </div>
 
@@ -39,9 +37,10 @@
 <script setup>
 import {reactive} from "vue";
 import CopyRight from "@/components/CopyRight";
+import MyTooltip from "@/components/MyTooltip";
 
- // data to display
- const products = reactive(
+// data to display
+const products = reactive(
      {
        "main": [
            {
