@@ -18,7 +18,7 @@ const user_id = ref('');
 // 简历列表
 const resumes = reactive({
   "taobao": "http://www.taobao.com",
-  "liaozhiming": "/static/liaozhiming.html"
+  "liaozhiming": "https://www.alsoapp.com/static/liaozhiming.html"
 });
 
 // 当前显示简历
