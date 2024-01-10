@@ -23,12 +23,11 @@
                 <h1>Page Not Found</h1>
                 <p class="zoom-area para">对不起，页面丢失了，请返回首页或者联系我们哦 </p>
                 <div class="link-container text-center">
-                    <a href="/" class="more-link">返回首页</a>
+                    <router-link :to="{'name': 'index'}" class="more-link">返回首页</router-link>
                 </div>
             </div>
-            <div class="columns-copy ">
-                <p class="copy-footer">Copyright&nbsp;&copy;<B><span id="year">{{ year }}</span></B>&nbsp;&bull;&nbsp;<B>Zhiming</B>&nbsp;All&nbsp;Rights&nbsp;Reserved.
-                </p>
+            <div class="columns-copy">
+                 <CopyRight/>
             </div>
         </div>
     </div>
@@ -36,7 +35,8 @@
 </template>
 
 <script setup>
-const year = new Date().getFullYear();
+
+import CopyRight from "@/components/CopyRight";
 </script>
 
 <style scoped>

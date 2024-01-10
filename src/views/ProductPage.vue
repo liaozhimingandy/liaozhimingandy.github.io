@@ -10,10 +10,15 @@
     <hr>
     <div class="row align-items-start">
       <div class="col col-lg-3 col-6" v-for="(product, index) in products.main" :key="index">
-        <div class="clearfix">
-          <img class="img-thumbnail" style="width:60px; height: 60px;"
-               :src="product.image_src" alt="..."  data-src="holder.js/60x60">
-          <span><router-link :to="{'name': product.to}" style="text-decoration: none;"> {{ product.title }}</router-link></span>
+        <div class="clearfix rounded">
+          <img class="img-thumbnail m-1" style="width:60px; height: 60px;"
+               :src="product.image_src" alt="{{ product.label }}" data-src="holder.js/60x60">
+        <router-link v-if="product.to" :to="{'name': product.to}"  style="text-decoration: none;"> {{
+              product.title
+            }}</router-link>
+          <a v-else :href="product.href"  style="text-decoration: none;"> {{
+              product.title
+            }}</a>
         </div>
       </div>
     </div>
@@ -21,10 +26,10 @@
     <hr>
     <div class="row align-items-start">
       <div class="col col-lg-3 col-6" v-for="(product, index) in products.other" :key="index">
-        <div class="clearfix">
-          <img class="img-thumbnail" style="width:60px; height: 60px;"
-               :src="product.image_src" alt="..." data-src="holder.js/60x60">
-          <span><a :href="product.href" style="text-decoration: none;">{{ product.title }}</a></span>
+        <div class="clearfix rounder">
+          <img class="img-thumbnail m-1" style="width:60px; height: 60px;"
+               :src="product.image_src" alt="{{ products.label }}" data-src="holder.js/60x60">
+          <a :href="product.href" style="text-decoration: none;">{{ product.title }}</a>
         </div>
       </div>
     </div>
@@ -41,34 +46,43 @@ import MyTooltip from "@/components/MyTooltip";
 
 // data to display
 const products = reactive(
-     {
-       "main": [
-           {
-         "title": "Superset",
-         "href": "/products/superset/",
-         "to": 'superset',
-         "image_src": "/static/superset.svg",
-         "lable": ""
-       }
-       ],
-       "other":[{
-         "title": "Rhapsody官方文档",
-         "href": "https://www.alsoapp.com/docs-rhapsody/6.9.1/?lang=en",
-         "image_src": "/static/rhapsody.svg",
-         "lable": ""
-       },
-         {
-         "title": "Rhapsody笔记",
-         "href": "https://www.alsoapp.com/docs-note-rhapsody/",
-         "image_src": "/static/note.svg",
-         "lable": ""
-       }
-       ]
-     }
- )
+    {
+      "main": [
+        {
+          "title": "Superset",
+          "href": "/products/superset/",
+          "to": 'superset',
+          "image_src": "/static/superset.svg",
+          "label": "superset"
+        },
+        {
+          "title": "Rhapsody",
+          "href": "https://www.alsoapp.com/docs-rhapsody/6.9.1/en/the-rhapsody-platform.html",
+          "to": '',
+          "image_src": "/static/rhapsody.svg",
+          "label": "Rhapsody"
+        }
+      ],
+      "other": [{
+        "title": "Rhapsody官方文档",
+        "href": "https://www.alsoapp.com/docs-rhapsody/6.9.1/?lang=en",
+        "image_src": "/static/rhapsody.svg",
+        "label": "Rhapsody官方文档"
+      },
+        {
+          "title": "Rhapsody笔记",
+          "href": "https://www.alsoapp.com/docs-note-rhapsody/",
+          "image_src": "/static/note.svg",
+          "label": "Rhapsody笔记"
+        }
+      ]
+    }
+)
 
 </script>
 
 <style scoped>
-
+.clearfix:hover {
+  border: 2px solid red;
+}
 </style>
