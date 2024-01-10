@@ -70,7 +70,7 @@ import {reactive} from "vue";
 
 const links = reactive({
   "main": [
-    {"href": "www.baidu.com", "title": "百度"},
+    {"href": "https://www.baidu.com", "title": "百度"},
     {"href": "https://map.baidu.com/", "title": "百度地图"},
     {"href": "https://yiyan.baidu.com/", "title": "百度文心一言"},
     {"href": "https://weibo.com/", "title": "新浪微博"},
