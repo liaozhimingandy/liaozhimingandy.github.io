@@ -35,21 +35,24 @@
       </div>
     </div>
 
-    <div class="card mt-2">
+    <div class="card mt-2" style="width: 25rem;">
       <h6 class="card-header">
         请联系我们,我们很乐意为你服务!
       </h6>
-      <div class="card-body">
+      <div class="card-bod">
         <img src="/static/contact-us-wechat.jpg" height="400px"/>
       </div>
     </div>
   </div>
+
+  <CopyRight></CopyRight>
 
 </template>
 
 <script setup>
 
 import {reactive} from "vue";
+import CopyRight from "@/components/CopyRight";
 
 const links = reactive([
   {

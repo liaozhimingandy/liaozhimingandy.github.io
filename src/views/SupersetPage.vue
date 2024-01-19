@@ -1,6 +1,7 @@
 <template>
-  <div class="text-bg-dark p-3 text-center">
-    Superset<B>&nbsp;&bull;&nbsp;</B><MyTooltip></MyTooltip>
+  <div class="text-bg-dark p-3 text-center sticky-top">
+    Superset<B>&nbsp;&bull;&nbsp;</B>
+    <MyTooltip></MyTooltip>
   </div>
   <div class="container pt-3">
     <h4>可视化-Superset</h4>
@@ -39,10 +40,10 @@
       </div>
 
     </div>
-
-    <!-- 版权信息 -->
-    <CopyRight />
   </div>
+  <!-- 版权信息 -->
+  <CopyRight/>
+
 </template>
 
 <script setup>

@@ -1,5 +1,5 @@
 <template>
-  <div class="text-bg-dark p-3 text-center">Demo<B>&nbsp;•&nbsp;</B><span class="text-center">
+  <div class="text-bg-dark p-3 text-center" sticky-top>Demo<B>&nbsp;•&nbsp;</B><span class="text-center">
     <MyTooltip></MyTooltip>
       </span>
   </div>
