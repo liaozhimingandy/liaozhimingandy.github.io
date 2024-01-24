@@ -13,7 +13,7 @@
   <div class="container">
     <div class="alert alert-warning alert-dismissible fade show" role="alert">
       <strong>
-        <router-link :to="{'name': 'products'}" class="text-muted">更多</router-link>
+        <router-link :to="{'name': 'products'}" class="text-muted">更多</router-link>({{ APP_ENV }}•{{ GIT_COMMITHASH.substring(0, 10) }}•{{ APP_BRANCH}})
       </strong>
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
@@ -51,7 +51,7 @@
 
 <script setup>
 
-import {reactive} from "vue";
+import { reactive } from "vue";
 import CopyRight from "@/components/CopyRight";
 
 const links = reactive([
@@ -129,7 +129,7 @@ const links = reactive([
       },
       {
         "href": "https://www.zhipin.com/",
-        "title": "boss直聘"
+        "title": "Boss直聘"
       }
     ]
   },
@@ -153,6 +153,10 @@ const links = reactive([
     ]
   }
 ])
+
+const APP_ENV = process.env.VUE_APP_ENV;
+const APP_BRANCH = process.env.BRANCH;
+const GIT_COMMITHASH = process.env.COMMIT_HASH;
 
 </script>
 

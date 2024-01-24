@@ -1,5 +1,5 @@
 <template>
-  <div class="sticky-bottom text-bg-light p-3">
+  <div class="text-bg-light p-3">
     <p class="text-center m-0">
       <router-link :to="{'name': 'index'}" style="text-decoration: none;" class="text-muted">alsoapp.com&nbsp;
       </router-link>&copy;<span id="years_now" class="font-weight-bold">&nbsp;{{
