@@ -5,7 +5,7 @@
         <img src="https://www.alsoapp.com/favicon.svg" alt="alsoapp" width="30" height="24">
       </a>
       <span class="navbar-text">
-                此网站维护中... 你可以提供宝贵的意见或建议;<a href="mailto:liaozhimingandy@qq.com" class="text-muted">点击此处打开邮箱客户端用于发送邮件</a>
+               <a href="mailto:liaozhimingandy@qq.com" class="text-muted">意见反馈</a>
             </span>
     </div>
   </nav>
@@ -13,7 +13,7 @@
   <div class="container">
     <div class="alert alert-warning alert-dismissible fade show" role="alert">
       <strong>
-        <router-link :to="{'name': 'products'}" class="text-muted">更多</router-link>({{ APP_VERBOSE }})
+        <router-link :to="{'name': 'products'}" class="text-muted">更多</router-link>
       </strong>
       <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
@@ -51,7 +51,7 @@
 
 <script setup>
 
-import { reactive, computed } from "vue";
+import { reactive } from "vue";
 import CopyRight from "@/components/CopyRight";
 
 const links = reactive([
@@ -149,14 +149,14 @@ const links = reactive([
       {
         "href": "https://smallpdf.com/cn/merge-pdf",
         "title": "pdf操作工具"
+      },
+      {
+        "title":"数据库排名榜",
+        "href": "https://db-engines.com/en/ranking"
       }
     ]
   }
 ])
-const APP_VERBOSE = computed(() => {
-  return process.env.VUE_APP_ENV+" • "+process.env.BRANCH+" • "+process.env.COMMIT_HASH.substring(0, 7);
-});
-
 
 </script>
 
