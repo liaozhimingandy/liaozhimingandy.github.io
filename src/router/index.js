@@ -5,6 +5,7 @@ import NotFoundPage from "@/views/NotFoundPage"
 import ProductPage from "@/views/ProductPage"
 import ResumePage from "@/views/ResumePage"
 import SupersetPage from "@/views/SupersetPage"
+import PrivacyView from "@/views/PrivacyView";
 
 const routes = [
     { path: '/home', redirect: '/', name: 'home', meta:{ title: "欢迎使用"}},
@@ -12,6 +13,7 @@ const routes = [
     { path: '/products/superset', component: SupersetPage, name: 'superset', meta:{ title: "superset"}},
     { path: '/products/', component: ProductPage, name: 'products', meta:{ title: "产品信息"}},
     { path: '/resumes/:user_id/', component: ResumePage, name: 'resumes', meta:{ title: "简历信息"}},
+    { path: '/privacy/', component: PrivacyView, name: 'privacy'},
     { path: '/:catchALL(.*)/', component: NotFoundPage, name: 'not-fond', meta:{ title: "Not Found"}},
 ]
 

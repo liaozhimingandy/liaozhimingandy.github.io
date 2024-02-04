@@ -20,7 +20,7 @@
 
     <div class="card mt-2" v-for="(item, index) in links" :key="index" :class="item.border_clss">
       <h6 class="card-header">
-        {{ item.title }}
+        {{ item.title }}({{ item.data.length }})
       </h6>
       <div class="card-body">
         <div class="row">
@@ -35,12 +35,36 @@
       </div>
     </div>
 
-    <div class="card mt-2" style="width: 25rem;">
-      <h6 class="card-header">
-        请联系我们,我们很乐意为你服务!
-      </h6>
-      <div class="card-bod">
-        <img src="/static/contact-us-wechat.jpg" height="400px"/>
+    <div class="row  mt-2">
+      <div class="col col-auto">
+        <div class="card">
+          <h6 class="card-header">
+            请联系我们,我们很乐意为你服务!
+          </h6>
+          <div class="card-bod">
+            <img src="/static/contact-us-wechat.jpg" height="400px"/>
+          </div>
+        </div>
+      </div>
+      <div class="col col-auto">
+        <div class="card">
+          <h6 class="card-header">
+            支付宝红包T-1
+          </h6>
+          <div class="card-bod">
+            <img src="/static/red-packet-me.png" height="400px" class="p-2"/>
+          </div>
+        </div>
+      </div>
+      <div class="col col-auto">
+        <div class="card">
+          <h6 class="card-header">
+            支付宝红包-2
+          </h6>
+          <div class="card-bod">
+            <img src="/static/red-packet-tjy.png" height="400px" class="p-2"/>
+          </div>
+        </div>
       </div>
     </div>
   </div>
