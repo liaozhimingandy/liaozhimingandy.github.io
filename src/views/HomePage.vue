@@ -23,8 +23,8 @@
         {{ item.title }}({{ item.data.length }})
       </h6>
       <div class="card-body">
-        <div class="row">
-          <div class="col col-auto" v-for="(link, item_index) in item.data" :key="item_index"><a :href="link.href"
+        <div class="row row-cols-auto g-3">
+          <div class="col" v-for="(link, item_index) in item.data" :key="item_index"><a :href="link.href"
                                                                                                  class="text-muted"
                                                                                                  style="text-decoration: none;"
                                                                                                  target="_blank"><h6>
@@ -34,37 +34,37 @@
         </div>
       </div>
     </div>
-
-    <div class="row  mt-2">
-      <div class="col col-auto">
+<!-- 卡片图片 -->
+    <div class="row mt-0 row-cols-auto g-2">
+      <div class="col">
         <div class="card">
           <h6 class="card-header">
             请联系我们,我们很乐意为你服务!
           </h6>
-          <div class="card-bod">
-            <img src="/static/contact-us-wechat.jpg" alt="联系方式" height="400px" @click="imageHandleClick" data-bs-toggle="modal"
+          <div class="card-body">
+            <img src="/static/contact-us-wechat.jpg" alt="联系方式" class="card-img-top" height="400px" @click="imageHandleClick" data-bs-toggle="modal"
                  data-bs-target="#myModal"/>
           </div>
         </div>
       </div>
-      <div class="col col-auto">
+      <div class="col">
         <div class="card">
           <h6 class="card-header">
             支付宝红包T-1
           </h6>
-          <div class="card-bod">
-            <img src="/static/red-packet-tjy.png" alt="支付宝红包" height="400px" class="p-2" @click="imageHandleClick" data-bs-toggle="modal"
+          <div class="card-body">
+            <img src="/static/red-packet-tjy.png" alt="支付宝红包" height="400rem" class="card-img-top" @click="imageHandleClick" data-bs-toggle="modal"
                  data-bs-target="#myModal"/>
           </div>
         </div>
       </div>
-      <div class="col col-auto">
+      <div class="col">
         <div class="card">
           <h6 class="card-header">
             支付宝红包-2
           </h6>
-          <div class="card-bod">
-            <img src="/static/red-packet-me.png" alt="支付宝红包" height="400px" class="p-2" data-bs-toggle="modal"
+          <div class="card-body">
+            <img src="/static/red-packet-me.png" alt="支付宝红包" height="400rem" class="card-img-top" data-bs-toggle="modal"
                  data-bs-target="#myModal" @click="imageHandleClick"/>
           </div>
         </div>
@@ -212,7 +212,6 @@ const links = reactive([
 const imageHandleClick = (e) => {
   modal_data.image_src_modal = e.target.src;
   modal_data.header_modal = e.target.alt;
-  console.info(modal_data)
 };
 
 </script>
