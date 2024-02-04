@@ -42,7 +42,8 @@
             请联系我们,我们很乐意为你服务!
           </h6>
           <div class="card-bod">
-            <img src="/static/contact-us-wechat.jpg" height="400px"/>
+            <img src="/static/contact-us-wechat.jpg" alt="联系方式" height="400px" @click="imageHandleClick" data-bs-toggle="modal"
+                 data-bs-target="#myModal"/>
           </div>
         </div>
       </div>
@@ -52,7 +53,8 @@
             支付宝红包T-1
           </h6>
           <div class="card-bod">
-            <img src="/static/red-packet-me.png" height="400px" class="p-2"/>
+            <img src="/static/red-packet-tjy.png" alt="支付宝红包" height="400px" class="p-2" @click="imageHandleClick" data-bs-toggle="modal"
+                 data-bs-target="#myModal"/>
           </div>
         </div>
       </div>
@@ -62,8 +64,27 @@
             支付宝红包-2
           </h6>
           <div class="card-bod">
-            <img src="/static/red-packet-tjy.png" height="400px" class="p-2"/>
+            <img src="/static/red-packet-me.png" alt="支付宝红包" height="400px" class="p-2" data-bs-toggle="modal"
+                 data-bs-target="#myModal" @click="imageHandleClick"/>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框 -->
+  <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+            <h1 class="modal-title fs-5" id="staticBackdropLabel">{{ modal_data.header_modal }}</h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <img :src="modal_data.image_src_modal" alt="Image" height="400px" >
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-bs-dismiss="modal">确认</button>
         </div>
       </div>
     </div>
@@ -75,9 +96,14 @@
 
 <script setup>
 
-import { reactive } from "vue";
+
+import {reactive} from "vue";
 import CopyRight from "@/components/CopyRight";
 
+// 模态弹框
+const modal_data = reactive({"image_src_modal": "/static/red-packet-me.png", "header_modal":""});
+
+// 链接
 const links = reactive([
   {
     "title": " 常用网站",
@@ -175,12 +201,19 @@ const links = reactive([
         "title": "pdf操作工具"
       },
       {
-        "title":"数据库排名榜",
+        "title": "数据库排名榜",
         "href": "https://db-engines.com/en/ranking"
       }
     ]
   }
-])
+]);
+
+// 图片点击处理
+const imageHandleClick = (e) => {
+  modal_data.image_src_modal = e.target.src;
+  modal_data.header_modal = e.target.alt;
+  console.info(modal_data)
+};
 
 </script>
 
