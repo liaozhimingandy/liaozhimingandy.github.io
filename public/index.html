@@ -6,11 +6,6 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <link rel="icon" href="<%= BASE_URL %>favicon.svg">
     <title><%= htmlWebpackPlugin.options.title %></title>
-    <% if (process.env.NODE_ENV === 'production' ) { %>
-    <script>
-        const _hmt = _hmt || [];
-    </script>
-    <% } %>
 </head>
 <body>
 <noscript>
@@ -20,17 +15,16 @@
 <div id="app"></div>
 <!-- built files will be auto injected -->
 <script src="https://cdn.bootcdn.net/ajax/libs/holder/2.9.8/holder.min.js"></script>
-
-<% if (process.env.NODE_ENV === 'production' ) { %>
+<!--百度统计-->
 <script>
-    const _hmt = _hmt || [];
-    (function () {
-        const hm = document.createElement("script");
-        hm.src = "https://hm.baidu.com/hm.js?e169c1b53b804b6fb37ba2995d38f52f";
-        const s = document.getElementsByTagName("script")[0];
-        s.parentNode.insertBefore(hm, s);
-    })();
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "https://hm.baidu.com/hm.js?e169c1b53b804b6fb37ba2995d38f52f";
+  var s = document.getElementsByTagName("script")[0];
+  s.parentNode.insertBefore(hm, s);
+})();
 </script>
-<% } %>
+
 </body>
 </html>
