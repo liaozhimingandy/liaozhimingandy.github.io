@@ -12,14 +12,14 @@
     </nav>
     <br>
     <div class="container">
-      <div class="alert alert-warning alert-dismissible fade show" role="alert">
+      <div class="alert alert-warning alert-dismissible fade show" role="alert" :class="navBgClass">
         <strong>
           <router-link :to="{'name': 'products'}" class="text-muted">更多</router-link>
         </strong>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
 
-      <div class="card mt-2" v-for="(item, index) in links" :key="index" :class="item.border_clss">
+      <div class="card mt-2" v-for="(item, index) in links" :key="index" :class="[item.border_clss,navBgClass]">
         <h6 class="card-header">
           {{ item.title }}({{ item.data.length }})
         </h6>
@@ -38,7 +38,7 @@
       <!-- 卡片图片 -->
       <div class="row mt-0 row-cols-auto g-2">
         <div class="col">
-          <div class="card">
+          <div class="card" :class="navBgClass">
             <h6 class="card-header">
               请联系我们,我们很乐意为你服务!
             </h6>
@@ -50,7 +50,7 @@
           </div>
         </div>
         <div class="col">
-          <div class="card">
+          <div class="card" :class="navBgClass">
             <h6 class="card-header">
               支付宝红包T-1
             </h6>
@@ -62,7 +62,7 @@
           </div>
         </div>
         <div class="col">
-          <div class="card">
+          <div class="card" :class="navBgClass">
             <h6 class="card-header">
               支付宝红包-2
             </h6>
@@ -82,13 +82,13 @@
         <div class="modal-content">
           <div class="modal-header">
             <h1 class="modal-title fs-5" id="staticBackdropLabel">{{ modal_data.header_modal }}</h1>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button type="button" class="btn-close btn btn-danger" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body text-center">
-            <img :src="modal_data.image_src_modal" alt="Image" height="400px">
+            <img :src="modal_data.image_src_modal" alt="image" height="400px">
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-default" data-bs-dismiss="modal">确认</button>
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确认</button>
           </div>
         </div>
       </div>
@@ -135,6 +135,10 @@ const links = reactive([
       {
         "href": "https://taobao.com/",
         "title": "淘宝"
+      },
+      {
+        "href": "https://wx.qq.com/",
+        "title": "网页版微信"
       },
       {
         "href": "https://filehelper.weixin.qq.com/",
@@ -216,6 +220,23 @@ const imageHandleClick = (e) => {
   modal_data.header_modal = e.target.alt;
 };
 
+// 当前时间设置为东八区
+const currentDateKey = computed(() =>{
+  // 时区设置
+  const options = {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  };
+  const dateKey = new Date().toLocaleString('zh-CN', options);
+  return dateKey.split('T')[0].replace(/\//g, '').substring(4, 8);
+});
+
 // 是否背景透明
 let navBgClass = ref('');
 // 节假日列表
@@ -229,8 +250,7 @@ const holidays = reactive({
 // 获取节假日对应图片
 const holidayImage = computed(() => {
   // 检查当前日期是否在节假日对象中
-  const key = new Date().toISOString().split('T')[0].replace(/-/g, '').substring(4, 8)
-  return holidays[key];
+  return holidays[currentDateKey.value];
 });
 
 // 计算html背景样式
