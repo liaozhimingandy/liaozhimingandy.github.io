@@ -6,6 +6,7 @@ import ProductPage from "@/views/ProductPage"
 import ResumePage from "@/views/ResumePage"
 import SupersetPage from "@/views/SupersetPage"
 import PrivacyView from "@/views/PrivacyView";
+import TestPage from "@/views/TestPage.vue";
 
 const routes = [
     { path: '/home', redirect: '/', name: 'home', meta:{ title: "欢迎使用"}},
@@ -14,6 +15,7 @@ const routes = [
     { path: '/products/', component: ProductPage, name: 'products', meta:{ title: "产品信息"}},
     { path: '/resumes/:user_id/', component: ResumePage, name: 'resumes', meta:{ title: "简历信息"}},
     { path: '/privacy/', component: PrivacyView, name: 'privacy'},
+     { path: '/test/', component: TestPage, name: 'test'},
     { path: '/:catchALL(.*)/', component: NotFoundPage, name: 'not-fond', meta:{ title: "Not Found"}},
 ]
 
@@ -24,11 +26,17 @@ const router = createRouter({
     trailingSlash: true // 设置 URL 以斜杠结尾
 });
 
-router.beforeEach((to,from,next)=>{//beforeEach是router的钩子函数，在进入路由前执行
-    if(to.meta.title){
+router.beforeEach((to, from, next) => {//beforeEach是router的钩子函数，在进入路由前执行
+    if (to.meta.title) {
         document.title = to.meta.title + ' | alsoapp'
     }
-    next()  //执行进入路由，如果不写就不会进入目标页
+
+    // 如果路径不是以 / 开头，则自动添加 /
+    if (!to.path.endsWith('/')) {
+        next({path: to.path + '/' });
+    } else {
+        next();
+    }
 })
 
 export default router;

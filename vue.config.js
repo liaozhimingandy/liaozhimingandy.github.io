@@ -1,10 +1,12 @@
 const webpack = require('webpack')
 const {defineConfig} = require('@vue/cli-service')
-const { GitRevisionPlugin } = require('git-revision-webpack-plugin');
+const {GitRevisionPlugin} = require('git-revision-webpack-plugin');
 const gitRevisionPlugin = new GitRevisionPlugin();
 
 module.exports = defineConfig({
     transpileDependencies: true,
+    // 打包不生成map文件
+    productionSourceMap: false,
     configureWebpack: {
         plugins: [
             new webpack.DefinePlugin({
@@ -12,6 +14,6 @@ module.exports = defineConfig({
                 'process.env.COMMIT_HASH': JSON.stringify(gitRevisionPlugin.commithash()),
                 'process.env.BRANCH': JSON.stringify(gitRevisionPlugin.branch())
             }),
-        ],
+        ]
     }
 })
