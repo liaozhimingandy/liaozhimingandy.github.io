@@ -17,9 +17,8 @@
 import {computed} from "vue";
 
 const APP_VERBOSE = computed(() => {
-  return process.env.VUE_APP_VERSION+"("+process.env.VUE_APP_ENV+" • "+process.env.BRANCH+" • "+process.env.COMMIT_HASH.substring(0, 7)+")";
+  return process.env.VUE_APP_VERSION+" | "+process.env.COMMIT_HASH.substring(0, 7);
 });
-
 </script>
 
 <style scoped>

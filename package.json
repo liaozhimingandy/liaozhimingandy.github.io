@@ -1,6 +1,6 @@
 {
   "name": "vue_alsoapp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -14,6 +14,7 @@
     "core-js": "^3.8.3",
     "element-plus": "^2.6.1",
     "git-revision-webpack-plugin": "^5.0.0",
+    "moment": "^2.30.1",
     "pinia": "^2.1.7",
     "vue": "^3.2.13",
     "vue-holderjs": "^1.0.2",
