@@ -39,7 +39,7 @@ jobs:
         run: |  
           mkdir release  
           cp -r dist/* release/  
-          tar -czvf release.tar.gz dist-release/
+          tar -czvf release.tar.gz release/
 
       - name: Create Release
         id: create_release
