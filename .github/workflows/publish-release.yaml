@@ -35,6 +35,12 @@ jobs:
           npm run build 
           cp dist/index.html dist/404.html
 
+      - name: Archive build artifacts
+        run: |  
+          mkdir dist-release  
+          cp -r dist/* release/  
+          tar -czvf release.tar.gz dist-release/
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
