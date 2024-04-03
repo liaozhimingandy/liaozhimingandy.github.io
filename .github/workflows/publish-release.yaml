@@ -50,7 +50,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/*  # 这里假设你的构建文件位于 `./dist/` 目录下
+          asset_path: dist/* 
           asset_name: vue3-release-${{ github.run_number }}.zip
           asset_content_type: application/zip
 
