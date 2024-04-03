@@ -37,7 +37,7 @@ jobs:
 
       - name: Archive build artifacts
         run: |  
-          mkdir dist-release  
+          mkdir release  
           cp -r dist/* release/  
           tar -czvf release.tar.gz dist-release/
 
