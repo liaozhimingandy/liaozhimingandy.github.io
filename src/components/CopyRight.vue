@@ -22,5 +22,4 @@ const APP_VERBOSE = computed(() => {
 </script>
 
 <style scoped>
-
 </style>
