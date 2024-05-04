@@ -16,13 +16,17 @@
         <div class="flex-grow"></div>
         <el-tooltip content="首页">
           <el-menu-item index="1">
-            <el-icon size="30">
-              <House/>
-            </el-icon>
+            <el-button text size="large" :auto-insert-space="true" style="width: 120px">
+              <template #icon>
+                <el-icon :size="80" :color="red">
+                  <House/>
+                </el-icon>
+              </template>
+            </el-button>
           </el-menu-item>
         </el-tooltip>
         <el-tooltip content="朋友">
-          <el-menu-item index="2" disabled>朋友</el-menu-item>
+          <el-menu-item index="2">朋友</el-menu-item>
         </el-tooltip>
         <el-menu-item index="3" disabled>其它</el-menu-item>
         <div class="flex-grow"></div>
@@ -60,6 +64,15 @@
 .flex-grow {
   flex-grow: 1;
 }
+
+.el-menu-item:hover {
+  background-color: transparent !important;
+}
+
+.el-menu--horizontal > .el-menu-item.is-active{
+  border-bottom: 4px solid blue;
+}
+
 </style>
 
 <script setup>
