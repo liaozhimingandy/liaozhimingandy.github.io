@@ -81,7 +81,7 @@ const products = reactive(
         "data": [
           {
             "title": "医院信息平台交互规范",
-            "href": "/static/hip-service/",
+            "href": "/hipmessageservice/",
             "image_src": "/static/note.svg",
             "label": "医院信息平台交互规范"
           }

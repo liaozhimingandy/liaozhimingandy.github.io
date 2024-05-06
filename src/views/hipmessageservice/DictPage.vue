@@ -22,7 +22,7 @@
 <script setup lang="jsx">
 
 import {onMounted, reactive, ref} from "vue";
-import service from "@/services";
+import {request} from "@/services";
 import {API_ENDPOINTS as api} from "@/services/api";
 import {
   ElNotification,
@@ -161,7 +161,7 @@ const onReset = (el) => {
 };
 
 onMounted(() => {
-      service.get(api.LIST_HIP_DICT)
+      request(api.LIST_HIP_DICT, 'get')
           .then(response => {
             // data.data = response.data;
             const list = [];

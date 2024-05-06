@@ -1,7 +1,8 @@
 // index.js
-import axios from 'axios';
+import 'axios'
+import axios from "axios";
 
-const service = axios.create({
+const instance = axios.create({
     baseURL: process.env.VUE_APP_BASE_URL, // 所有的请求地址前缀部分,
     timeout: 5000, // 请求超时时间
     withCredentials: true, // 异步请求携带cookie
@@ -10,18 +11,19 @@ const service = axios.create({
     }
 });
 
-service.defaults.referrerPolicy = 'no-referrer';
+instance.defaults.referrerPolicy = 'no-referrer';
 
 // 请求拦截器
-service.interceptors.request.use(
+instance.interceptors.request.use(
   (config) => {
     // 在请求发送之前做一些处理，例如添加 token
-    config.headers.Authorization = `Bearer ${localStorage.getItem('token')}`;
+    if(config.headers) {
+        config.headers.Authorization = `Bearer ${localStorage.getItem('token')}`;
+    }
     return config;
   },
   (error) => {
     // 对请求错误做些什么
-    console.log(error);
     return Promise.reject(error);
   }
 );
@@ -29,7 +31,7 @@ service.interceptors.request.use(
 // 异常拦截处理器
 const errorHandler = (error) => {
     // 对响应错误做些什么
-	console.log(error.response);
+	// console.log(error.response);
 
 	if (error.message === 'Network Error') {
 		console.error('系统异常')
@@ -39,12 +41,12 @@ const errorHandler = (error) => {
 		// 从本地存储加载token
 		const access_token = localStorage.getItem('access_token');
 
-		if (error.response.status === 403) {
+		if (error.response?.status === 403) {
 			console.error(data.msg)
 			// eslint-disable-next-line no-mixed-spaces-and-tabs
     	}
 		// 判断http状态是否是401
-		if (error.response.status === 401) {
+		if (error.response?.status === 401) {
 			// 调接口，刷新token
 			error.config.headers.Authorization = access_token;
 		}
@@ -54,7 +56,7 @@ const errorHandler = (error) => {
 }
 
 // 响应拦截器
-service.interceptors.response.use(
+instance.interceptors.response.use(
   (response) => {
     // 对响应数据做一些处理
     return response.data;
@@ -62,4 +64,10 @@ service.interceptors.response.use(
   errorHandler,
 );
 
-export default service;
+export const request = (
+    url,
+    method= 'GET',
+    submitData={},
+) => {
+    return instance({url: url, method, [method.toUpperCase() === "GET" ? "params" : "data"]:submitData})
+};

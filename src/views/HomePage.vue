@@ -209,6 +209,10 @@ const links = reactive([
       {
         "title": "数据库排名榜",
         "href": "https://db-engines.com/en/ranking"
+      },
+      {
+        "title": "图标工厂",
+        "href": "https://icon.wuruihong.com/"
       }
     ]
   }

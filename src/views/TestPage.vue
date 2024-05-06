@@ -54,7 +54,7 @@
 }
 </style>
 <script setup>
-import service from "@/services";
+import {request} from "@/services";
 import {onMounted, reactive, computed, ref} from "vue";
 
 import {ElHeader, ElNotification, ElContainer, ElMain, ElAside, ElScrollbar, ElIcon, ElMenu, ElMenuItem, ElDivider} from 'element-plus';   // 按需引入组件
@@ -69,7 +69,7 @@ const data = reactive({});
 const topNav = ref(null);
 
 onMounted(() => {
-      service.get(api.LIST_HIP_SERVICE)
+      request(api.LIST_HIP_SERVICE, 'get')
           .then(response => {
             data.data = response.data;
             ElNotification({

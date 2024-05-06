@@ -26,7 +26,7 @@
           </el-menu-item>
         </el-tooltip>
         <el-tooltip content="朋友">
-          <el-menu-item index="2">朋友</el-menu-item>
+          <el-menu-item index="2" disabled>朋友</el-menu-item>
         </el-tooltip>
         <el-menu-item index="3" disabled>其它</el-menu-item>
         <div class="flex-grow"></div>

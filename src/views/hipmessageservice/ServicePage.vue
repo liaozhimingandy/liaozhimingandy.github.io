@@ -14,14 +14,14 @@
 
 <script setup>
 import {onMounted, ref} from "vue";
-import service from "@/services";
+import {request} from "@/services";
 import {API_ENDPOINTS as api} from "@/services/api";
 import {ElNotification, ElTable, ElTableColumn} from "element-plus";
 
 const data = ref([]);
 
 onMounted(() => {
-      service.get(api.LIST_HIP_SERVICE)
+      request(api.LIST_HIP_SERVICE, 'get')
           .then(response => {
             data.value = response.data.map(item => ({"value": item[3], "comment": item[2], "dir": item[1], "remark": item[4]}));
             ElNotification({

@@ -25,13 +25,13 @@ const routes = [
         redirect: '/hipmessageservice/service/',
         children: [
             {
-                path: 'service/', component: ServicePage, name: 'hipmessageservice-service'
+                path: 'service/', component: ServicePage, name: 'hipmessageservice-service', meta: {title: "互联互通标准服务"}
             },
             {
-                path: 'cda/', component: CDAPage, name: 'hipmessageservice-cda'
+                path: 'cda/', component: CDAPage, name: 'hipmessageservice-cda', meta: {title: "互联互通标准CDA"}
             },
             {
-                path: 'dict/', component: DictPage, name: 'hipmessageservice-dict'
+                path: 'dict/', component: DictPage, name: 'hipmessageservice-dict', meta: {title: "互联互通标准值域参考"}
             }
         ]
     },
