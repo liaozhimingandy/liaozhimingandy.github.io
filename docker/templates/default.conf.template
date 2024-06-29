@@ -1,0 +1,56 @@
+server {
+    listen 80;
+
+    resolver 8.8.8.8 8.8.4.4 valid=300s;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
+    add_header X-Frame-Options DENY;
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    server_name ${server_name};
+    # 将上面 server_name 的 openapi.esb.alsoapp.com 换成你nginx服务器的IP地址 
+    
+    root /usr/share/nginx/html;
+    # 将上面 root 的路径换成你 app 项目的目录路径
+
+    # other root dir
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # static dir 
+    location /static {
+      alias /usr/share/nginx/html;
+      expires 7h;
+      access_log off;
+    }
+    
+    # media dir
+    location /media {
+      alias /usr/share/nginx/media;
+      expires 7h;
+      access_log off;
+    }
+
+    # redirect server error pages to the static page /40x.html
+    error_page 400 404 /404.html;
+    location = /404.html{
+        root /usr/share/nginx/html/404;
+    }
+
+    # redirect server error pages to the static page /50x.html
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html/500;
+    }
+
+    #access_log /var/log/nginx/access.log main;
+    #error_log /var/log/nginx/error.log;
+    
+    location ~ /\.ht {
+      deny  all;
+    }
+
+}

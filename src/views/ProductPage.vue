@@ -63,7 +63,7 @@ const products = reactive(
         "data": [
           {
             "title": "Rhapsody官方文档",
-            "href": "https://www.alsoapp.com/docs-rhapsody/6.9.1/?lang=en",
+            "href": "https://www.alsoapp.com/docs-rhapsody-7.1/?lang=en",
             "image_src": "/static/rhapsody.svg",
             "label": "Rhapsody官方文档"
           },
@@ -89,6 +89,7 @@ const products = reactive(
       }
     ]
 )
+
 
 </script>
 
