@@ -17,7 +17,7 @@ COPY . .
 RUN yarn build
 
 # 使用Nginx镜像来运行构建好的项目
-FROM nginx:lasted
+FROM nginx:1.27
 
 # 将构建好的项目复制到Nginx镜像的/usr/share/nginx/html目录下
 COPY --from=builder /app/dist/ /usr/share/nginx/html
