@@ -42,7 +42,7 @@ jobs:
           # 使用Dockerfile构建镜像
           docker build . --file Dockerfile --tag ${{ env.IMAGE_SRC }}/${{ env.repo_name }}:${{ env.latest_tag_without_v }}
           # 给镜像打标签
-          docker tar ${{ env.IMAGE_SRC }}/${{ env.repo_name }}:${{ env.latest_tag_without_v }} ${{ env.IMAGE_SRC }}/${{ env.repo_name }}:latest
+          docker tag ${{ env.IMAGE_SRC }}/${{ env.repo_name }}:${{ env.latest_tag_without_v }} ${{ env.IMAGE_SRC }}/${{ env.repo_name }}:latest
 
       # Slim the Image
       - uses: kitabisa/docker-slim-action@v1
