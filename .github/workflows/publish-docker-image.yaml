@@ -40,7 +40,7 @@ jobs:
       - name: 构建Docker镜像
         run: |
           # 使用Dockerfile构建镜像
-          docker build . --file Dockerfile --tag ${{ env.IMAGE_SRC }}/${{ env.repo_name }}:${{ env.latest_tag_without_v }}_{{github.run_number}}
+          docker build . --file Dockerfile --tag ${{ env.IMAGE_SRC }}/${{ env.repo_name }}:${{ env.latest_tag_without_v }}
           # 给镜像打标签
           docker tar ${{ env.IMAGE_SRC }}/${{ env.repo_name }}:${{ env.latest_tag_without_v }} ${{ env.IMAGE_SRC }}/${{ env.repo_name }}:latest
 
