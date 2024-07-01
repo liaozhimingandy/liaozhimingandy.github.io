@@ -10,6 +10,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      IMAGE_SRC: registry.cn-hangzhou.aliyuncs.com/liaozhiming/${{ env.repo_name }}
 
     steps:
       - name: Checkout
@@ -34,14 +36,27 @@ jobs:
           # 将处理后的标签设置为输出变量  
           echo "latest_tag_without_v=$latest_tag_without_v" >> $GITHUB_ENV
 
+      - name: 构建Docker镜像
+        run: |
+          # 使用Dockerfile构建镜像
+          docker build . --file Dockerfile --tag ${{ env.IMAGE_SRC }}:${{ env.latest_tag_without_v }}_{{github.run_number}}
+          # 给镜像打标签
+          docker tar ${{ env.IMAGE_SRC }}:${{ env.latest_tag_without_v }} ${{ env.IMAGE_SRC }}:latest
+
+      # Slim the Image
+      - uses: kitabisa/docker-slim-action@v1
+        env:
+          DSLIM_HTTP_PROBE: false
+        with:
+          target: ${{ env.IMAGE_SRC }}:latest
+          tag: ${{ env.latest_tag_without_v }}_{{github.run_number}}_slim
+
       - name: Build the Docker image
         run: |
           docker version
           # 登录阿里云镜像仓库
           docker login --username=${{ secrets.DOCKER_USERNAME }} --password=${{ secrets.DOCKER_PASSWORD }} registry.cn-hangzhou.aliyuncs.com
-          # 使用Dockerfile构建镜像
-          docker build . --file Dockerfile --tag registry.cn-hangzhou.aliyuncs.com/liaozhiming/${{ env.repo_name }}:${{ env.latest_tag_without_v }}
           docker images
           # 推送镜像到镜像仓库
-          docker push registry.cn-hangzhou.aliyuncs.com/liaozhiming/${{ env.repo_name }}:${{ env.latest_tag_without_v }}
+          docker image push ${{ env.IMAGE_SRC }} --all-tags
 
