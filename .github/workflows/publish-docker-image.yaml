@@ -50,7 +50,7 @@ jobs:
           DSLIM_HTTP_PROBE: false
         with:
           target: ${{ env.IMAGE_SRC }}/${{ env.repo_name }}:latest
-          tag: ${{ env.latest_tag_without_v }}_{{github.run_number}}_slim
+          tag: ${{ env.latest_tag_without_v }}_${{github.run_number}}_slim
 
       - name: Build the Docker image
         run: |
