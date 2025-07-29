@@ -195,8 +195,8 @@ const links = reactive([
     "class": "tools",
     "data": [
       {
-        "href": "https://www.json.cn/",
-        "title": "在线json格式校验"
+        "href": "https://jsonhero.io/",
+        "title": "json格式化视图"
       },
       {
         "href": "https://tool.oschina.net/codeformat/xml",

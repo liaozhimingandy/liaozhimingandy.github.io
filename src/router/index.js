@@ -11,6 +11,7 @@ import IndexPage from "@/views/hipmessageservice/IndexPage.vue";
 import ServicePage from "@/views/hipmessageservice/ServicePage.vue";
 import CDAPage from "@/views/hipmessageservice/CDAPage.vue";
 import DictPage from "@/views/hipmessageservice/DictPage.vue";
+import LoginPage from "@/views/LoginPage.vue";
 
 const routes = [
     {path: '/home', redirect: '/', name: 'home', meta: {title: "欢迎使用"}},
@@ -37,6 +38,7 @@ const routes = [
     },
     {path: '/privacy/', component: PrivacyView, name: 'privacy'},
     {path: '/test/', component: TestPage, name: 'test'},
+    {path: '/login/', component: LoginPage, name: 'login'},
     {path: '/:catchALL(.*)/', component: NotFoundPage, name: 'not-fond', meta: {title: "Not Found"}},
 ]
 
