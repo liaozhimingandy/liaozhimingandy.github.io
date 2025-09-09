@@ -167,6 +167,21 @@ const links = reactive([
     ]
   },
   {
+    "title": " AI类",
+    "border_clss": "border-info",
+    "class": "ais",
+    "data": [
+      {
+        "href": "https://chatgpt.com/",
+        "title": "ChatGPT"
+      },
+      {
+        "href": "https://chat.baidu.com/",
+        "title": "DeepSeek"
+      }
+    ]
+  },
+  {
     "title": " 招聘网站",
     "border_clss": "border-success",
     "class": "jobs",
@@ -225,7 +240,7 @@ const imageHandleClick = (e) => {
 };
 
 // 当前时间设置为东八区
-const currentDateKey = computed(() =>{
+const currentDateKey = computed(() => {
   // 时区设置
   const options = {
     timeZone: 'Asia/Shanghai',

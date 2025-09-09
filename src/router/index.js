@@ -51,7 +51,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {//beforeEach是router的钩子函数，在进入路由前执行
     if (to.meta.title) {
-        document.title = to.meta.title + ' | alsoapp'
+        document.title = to.meta.title + ' - alsoapp'
     }
 
     // 如果路径不是以 / 开头，则自动添加 /
