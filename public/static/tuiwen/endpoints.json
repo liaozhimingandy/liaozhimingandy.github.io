@@ -1,0 +1,106 @@
+{
+    "schema_version": "1.0",
+    "config_version": "20260813",
+    "cache": {
+        "max_age": 86400,
+        "refresh_before": 3600,
+        "stale_if_error": 604800
+    },
+    "services": {
+        "api": {
+            "description": "业务接口服务",
+            "protocol": "https",
+            "enabled": true,
+            "strategy": "priority",
+            "preferred_region": "mainland",
+            "fallback_endpoint": "main",
+            "health_check": {
+                "path": "/api/check-health/",
+                "method": "GET",
+                "timeout": 3000
+            },
+            "endpoints": [
+                {
+                    "id": "main",
+                    "url": "https://api.tuiwen.alsoapp.com",
+                    "priority": 1,
+                    "enabled": true,
+                    "region": "mainland",
+                    "platforms": [
+                        "web",
+                        "mp-weixin",
+                        "app-android",
+                        "app-ios"
+                    ]
+                },
+                {
+                    "id": "backup",
+                    "region": "mainland",
+                    "url": "https://remedies-beef-regional-diary.trycloudflare.com",
+                    "priority": 2,
+                    "enabled": true,
+                    "platforms": [
+                        "web",
+                        "mp-weixin",
+                        "app-android",
+                        "app-ios"
+                    ]
+                }
+            ]
+        },
+        "file": {
+            "description": "文件服务",
+            "enabled": false,
+            "protocol": "https",
+            "strategy": "fastest",
+            "fallback_endpoint": "main",
+            "health_check": {
+                "path": "/health",
+                "method": "GET",
+                "timeout": 3000
+            },
+            "endpoints": [
+                {
+                    "id": "main",
+                    "url": "https://file.xxx.com",
+                    "priority": 1,
+                    "enabled": true,
+                    "region": "mainland",
+                    "platforms": [
+                        "web",
+                        "mp-weixin",
+                        "app-android",
+                        "app-ios"
+                    ]
+                }
+            ]
+        },
+        "socket": {
+            "description": "实时通信服务",
+            "enabled": false,
+            "protocol": "wss",
+            "strategy": "priority",
+            "fallback_url": "wss://shturl.cc/1lVtGnXhBXj8v",
+            "health_check": {
+                "path": "/socket/health",
+                "method": "GET",
+                "timeout": 3000
+            },
+            "endpoints": [
+                {
+                    "id": "socket-mainland-1",
+                    "url": "wss://shturl.cc/EiztTPD",
+                    "region": "mainland",
+                    "priority": 1,
+                    "enabled": true,
+                    "platforms": [
+                        "web",
+                        "mp-weixin",
+                        "app-android",
+                        "app-ios"
+                    ]
+                }
+            ]
+        }
+    }
+}
