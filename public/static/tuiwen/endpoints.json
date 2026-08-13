@@ -15,7 +15,7 @@
             "preferred_region": "mainland",
             "fallback_endpoint": "main",
             "health_check": {
-                "path": "/api/check-health/",
+                "path": "/health-check/",
                 "method": "GET",
                 "timeout": 3000
             },
