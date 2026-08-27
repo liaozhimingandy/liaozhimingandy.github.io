@@ -6,7 +6,7 @@
           <img src="https://www.alsoapp.com/favicon.svg" alt="alsoapp" width="30" height="24">
         </a>
         <span class="navbar-text">
-               <a href="mailto:liaozhimingandy@qq.com" class="text-muted">意见反馈</a>
+               <a href="mailto:contact@alsoapp.com" class="text-muted">意见反馈</a>
             </span>
       </div>
     </nav>
