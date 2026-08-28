@@ -34,10 +34,23 @@
                     ]
                 },
                 {
-                    "id": "backup",
+                    "id": "backup1",
                     "region": "mainland",
-                    "url": "https://legitimate-jet-transmission-picks.trycloudflare.com",
+                    "url": "https://api-tuiwen.alsoapp.com",
                     "priority": 2,
+                    "enabled": true,
+                    "platforms": [
+                        "web",
+                        "mp-weixin",
+                        "app-android",
+                        "app-ios"
+                    ]
+                },
+                {
+                    "id": "backup2",
+                    "region": "mainland",
+                    "url": "legitimate-jet-transmission-picks.trycloudflare.com",
+                    "priority": 3,
                     "enabled": true,
                     "platforms": [
                         "web",
