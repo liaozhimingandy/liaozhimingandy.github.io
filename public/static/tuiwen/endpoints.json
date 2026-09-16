@@ -49,7 +49,7 @@
                 {
                     "id": "backup2",
                     "region": "mainland",
-                    "url": "legitimate-jet-transmission-picks.trycloudflare.com",
+                    "url": "https://api-tuiwen.alsoapp.com/api/v2",
                     "priority": 3,
                     "enabled": true,
                     "platforms": [
