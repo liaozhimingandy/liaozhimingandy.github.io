@@ -1,78 +1,81 @@
 <template>
-  <el-container>
-    <el-header ref="topNav" style="padding: 0;">
+  <t-layout>
+    <t-header ref="topNav" style="padding: 0;">
       <MyHeader/>
-    </el-header>
-    <el-container style="margin-top: 2px;">
-      <el-scrollbar :height="scrollHeight">
-        <el-aside :style="{'background-color': bg_color}" style="padding-right: 10px" class="text-center p-2">
-          <el-menu mode="vertical" :router="true" default-active="/hipmessageservice/service/">
-            <el-menu-item index="/hipmessageservice/service/">
-              <el-icon size="30">
-                <Platform/>
-              </el-icon>
+    </t-header>
+    <t-layout style="margin-top: 2px;">
+      <div class="scroll-area" :style="{height: scrollHeight}">
+        <t-aside :style="{'background-color': bg_color}" style="padding-right: 10px" class="text-center p-2">
+          <t-menu :value="activeMenu" @change="onMenuChange">
+            <t-menu-item value="/hipmessageservice/service/">
+              <ServiceIcon size="28px"/>
               <template #title>交互服务</template>
-            </el-menu-item>
-            <el-menu-item index="/hipmessageservice/cda/">
-              <el-icon size="30">
-                <Document/>
-              </el-icon>
+            </t-menu-item>
+            <t-menu-item value="/hipmessageservice/cda/">
+              <FileIcon size="28px"/>
               <template #title>CDA文档列表</template>
-            </el-menu-item>
-            <el-menu-item index="/hipmessageservice/dict/">
-              <el-icon size="30">
-                <Collection/>
-              </el-icon>
+            </t-menu-item>
+            <t-menu-item value="/hipmessageservice/dict/">
+              <BookIcon size="28px"/>
               <template #title>标准字典参考</template>
-            </el-menu-item>
-          </el-menu>
-          <el-divider></el-divider>
-          <el-alert
+            </t-menu-item>
+          </t-menu>
+          <t-divider></t-divider>
+          <t-alert
+              theme="warning"
               title="特别声明"
-              type="warning"
-              effect="dark"
-              description="本文档的目的是为更好的方便大家在技术上的沟通交流,不涉及患者或医院隐私数据,如发现,请联系我们处理!"
-              show-icon
+              message="本文档的目的是为更好的方便大家在技术上的沟通交流,不涉及患者或医院隐私数据,如发现,请联系我们处理!"
+              :close="true"
               @close="()=>{ is_closed = !is_closed}"
           />
-          <el-divider v-show="!is_closed"></el-divider>
-          <el-link href="https://pan.baidu.com/s/1DddWS49ydgz79m5yz-ZgOA?pwd=9umj#list/path=%2F" target="_blank"
-                   :underline="false">
-            <el-button type="danger">相关资料下载</el-button>
-          </el-link>
-        </el-aside>
-      </el-scrollbar>
-      <el-main style="padding: 0">
-        <el-scrollbar :height="scrollHeight">
+          <t-divider v-show="!is_closed"></t-divider>
+          <t-link href="https://pan.baidu.com/s/1DddWS49ydgz79m5yz-ZgOA?pwd=9umj#list/path=%2F" target="_blank"
+                  :underline="false">
+            <t-button theme="danger">相关资料下载</t-button>
+          </t-link>
+        </t-aside>
+      </div>
+      <t-content style="padding: 0">
+        <div class="scroll-area" :style="{height: scrollHeight}">
           <router-view/>
-        </el-scrollbar>
-      </el-main>
-    </el-container>
-  </el-container>
+        </div>
+      </t-content>
+    </t-layout>
+  </t-layout>
 </template>
 
 <style scoped>
-.el-menu {
+.t-menu {
   border: 0 !important;
+}
+
+.scroll-area {
+  overflow-y: auto;
 }
 </style>
 <script setup>
 
 import {computed, ref} from "vue";
+import {useRoute, useRouter} from "vue-router";
+import {ServiceIcon, FileIcon, BookIcon} from 'tdesign-icons-vue-next'
 
-import {
-  ElHeader, ElContainer, ElMain, ElAside, ElScrollbar, ElIcon, ElMenu, ElMenuItem, ElDivider,
-  ElButton, ElLink, ElAlert
-} from 'element-plus';   // 按需引入组件
-import {Collection, Platform, Document} from '@element-plus/icons-vue' // 按需引入 Icon 图标
-
-// import {messageStore} from "@/store";
 import MyHeader from "@/components/MyHeader.vue";
 
+const route = useRoute();
+const router = useRouter();
 
-// const {message} = messageStore();
 const topNav = ref(null);
 const is_closed = ref(false)
+// 当前激活的侧边菜单,与路由保持同步
+const activeMenu = ref(route.path.includes('/cda/') ? '/hipmessageservice/cda/'
+    : route.path.includes('/dict/') ? '/hipmessageservice/dict/'
+        : '/hipmessageservice/service/')
+
+// 菜单切换时跳转路由
+function onMenuChange(value) {
+  activeMenu.value = value;
+  router.push(value);
+}
 
 // 滚动高度
 const scrollHeight = computed(() => {

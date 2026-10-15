@@ -1,17 +1,13 @@
 <template>
   <div style="height: 100vh">
-    <el-auto-resizer>
-      <template #default="{ height, width }">
-        <el-table-v2
-            :columns="fixColumns"
-            :data="filter_data"
-            :width="width"
-            :height="height"
-            fixed
-            v-if="data.data"
-        />
-      </template>
-    </el-auto-resizer>
+    <t-enhanced-table
+        :data="filterData"
+        :columns="columns"
+        row-key="index"
+        hover
+        :loading="loading"
+        @filter-change="onFilterChange"
+    />
   </div>
 </template>
 
@@ -19,179 +15,73 @@
 
 </style>
 
-<script setup lang="jsx">
-
-import {onMounted, reactive, ref} from "vue";
+<script setup>
+import {computed, onMounted, ref} from "vue";
 import {request} from "@/services";
 import {API_ENDPOINTS as api} from "@/services/api";
-import {
-  ElNotification,
-  ElTableV2,
-  ElAutoResizer,
-  ElPopover,
-  ElCheckboxGroup,
-  ElCheckbox,
-  ElIcon,
-  ElButton,
-  ElScrollbar
-} from "element-plus";
-import {Filter} from '@element-plus/icons-vue';
-import {generalArrFilterHandler, generalFilterHandler} from "@/common/el-table-v2-utils";
+import {NotifyPlugin} from "tdesign-vue-next";
 
-const data = reactive({'data': null});
-const filter_data = ref([]);
-const columns = ref([
-  {
-    key: 'id',
-    dataKey: "index",//需要渲染当前列的数据字段，如{id:9527,name:'Mike'}，则填id
-    title: "序号",//显示在单元格表头的文本
-    width: 80,//当前列的宽度，必须设置
-    fixed: false,//是否固定列
-  },
-  {
-    key: "desc",
-    dataKey: "desc",//需要渲染当前列的数据字段，如{id:9527,name:'Mike'}，则填name
-    title: "字典表名称",
-    width: 300,
-    filterable: true,
-    filterMethod: generalArrFilterHandler
-  },
-  {
-    key: "value",
-    dataKey: "value",//需要渲染当前列的数据字段，如{id:9527,name:'Mike'}，则填name
-    title: "值",
-    width: 100,
-  },
-  {
-    key: "comment",
-    dataKey: "comment",//需要渲染当前列的数据字段，如{id:9527,name:'Mike'}，则填name
-    title: "值含义",
-    width: 300,
-  },
-  {
-    key: "dict_name",
-    dataKey: "dict_name",//需要渲染当前列的数据字段，如{id:9527,name:'Mike'}，则填name
-    title: "参考标准",
-    width: 100,
-  }
-])
+const allData = ref([]);
+const filterData = ref([]);
+const loading = ref(false);
 
-const fixColumns = columns.value.map(item => {
-  // 参考文档: https://blog.csdn.net/ymzhaobth/article/details/129493380
-  return {
-    key: item.dataKey,
-    title: item.title,
-    dataKey: item.dataKey,
-    width: item.width ?? 200,
-    headerCellRenderer: (props) => {
-      if (!item.filterable) return props.column.title
-      return <div class="tbv2-th-filter">
-        <span class="th-cell">{props.column.title}</span>
-        <ElPopover trigger="hover" {...{width: 200}}>
-          {{
-            default: () => (
-                <div class="filter-wrapper">
-                  <div class="filter-group">
-                    <ElScrollbar height="400px">
-                      <ElCheckboxGroup v-model={filterableCols[item.dataKey].selected}>
-                        {
-                          filterableCols[item.dataKey].list.map(f => <ElCheckbox key={f.value}
-                                                                                 label={f.text}>{f.text}</ElCheckbox>)
-                        }
-                      </ElCheckboxGroup>
-                    </ElScrollbar>
-                  </div>
-                  <div class="mt-3 text-center">
-                    <ElButton onClick={onFilter} type="primary">
-                      确认
-                    </ElButton>
-                    <ElButton onClick={()=>onReset(item.dataKey)} type="danger">
-                      重置
-                    </ElButton>
-                  </div>
-                </div>
-            ),
-            reference: () => (
-                <ElIcon class="cursor-pointer">
-                  <Filter/>
-                </ElIcon>
-            ),
-          }}
-        </ElPopover>
-      </div>
+// 字典表名称筛选项(接口返回后填充)
+const descFilters = ref([]);
+
+// 表格列配置
+const columns = computed(() => [
+  {colKey: 'serial-number', title: '序号', width: 80},
+  {
+    colKey: 'desc',
+    title: '字典表名称',
+    width: 300,
+    filter: {
+      type: 'multiple',
+      showConfirmAndReset: true,
+      list: descFilters.value
     }
+  },
+  {colKey: 'value', title: '值', width: 100},
+  {colKey: 'comment', title: '值含义', width: 300},
+  {colKey: 'dict_name', title: '参考标准', width: 100},
+]);
+
+// 筛选变化时过滤数据
+function onFilterChange(filters) {
+  const selected = filters.desc || [];
+  if (!selected.length) {
+    filterData.value = allData.value;
+    return;
   }
-})
-
-/**
- * 筛选信息列表
- * props:
- * - {Array} list 可筛选值列表
- * - {Array} selected 已勾选列表
- * - {Function} [filterMethod] 筛选方法
- */
-const filterableCols = reactive(
-    columns.value
-        .filter(c => c.filterable)
-        .reduce((prev, curr) => {
-          prev[curr.dataKey] = {
-            selected: [],
-            list: [],
-            filterMethod: curr.filterMethod ?? generalFilterHandler
-          }
-          return prev
-        }, {})
-);
-
-const onFilter = () => {
-  // console.info(Object.entries(filterableCols))
-  const allFilters = Object.entries(filterableCols).filter(configs => configs[1].selected?.length > 0)
-
-  filter_data.value = data.data.filter(p => {
-    return allFilters.every(([dataKey,configs]) => {
-      return !configs.filterMethod || configs.filterMethod(p[dataKey], configs.selected)
-    })
-  })
-};
-
-// 重置筛选
-const onReset = (el) => {
-  filterableCols[el].selected = [];
-  onFilter();
-};
+  filterData.value = allData.value.filter(item => selected.includes(item.desc));
+}
 
 onMounted(() => {
+      loading.value = true;
       request(api.LIST_HIP_DICT, 'get')
           .then(response => {
-            // data.data = response.data;
-            const list = [];
-            response.data.forEach((item) => {
-              list.push({index: item[0], dict_name: item[4], value: item[2], comment: item[3], desc: item[1]});
-            });
-            data.data = list;
-            filter_data.value = list;
-            // 处理过滤列表
-            for (let item in filterableCols) {
-              let map = new Map()
-              let list;
-              // 去重、转对象
-              list = response.data.map(el => ({text: el[1], value: el[4]}));
-              list.filter(item => map.set(item['value'].toString(), item['text']) && !map.has(item['value'].toString()))
-              filterableCols[item].list = [...map].map(item => ({'value': item[0], 'text': item[1]}))
-              filterableCols[item].selected = []
-            }
+            allData.value = response.data.map(item => (
+                {index: item[0], dict_name: item[4], value: item[2], comment: item[3], desc: item[1]}
+            ));
+            filterData.value = allData.value;
+            // 生成去重后的筛选项
+            const map = new Map();
+            response.data.forEach(el => map.set(el[1], {label: el[1], value: el[1]}));
+            descFilters.value = [...map.values()];
 
-            ElNotification({
+            NotifyPlugin.success({
               title: '温馨提示',
-              message: '已成功加载' + data.data.length + '条数据',
-              type: 'success',
-              position: 'bottom-right'
+              content: '已成功加载' + allData.value.length + '条数据',
+              placement: 'bottom-right',
+              duration: 3000
             });
           })
           .catch(error => {
             console.error(error);
+          })
+          .finally(() => {
+            loading.value = false;
           });
-
     }
 );
 </script>

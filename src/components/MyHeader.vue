@@ -1,93 +1,68 @@
 <template>
-  <el-row class="align-items-center px-2" style="background-color: #fff; border-bottom: 2px solid red">
-    <el-col :span="6">
+  <t-row class="align-items-center px-2" style="background-color: #fff; border-bottom: 2px solid red">
+    <t-col :span="6">
       <img
           style="width: 50px"
           src="https://www.alsoapp.com/favicon.svg"
           alt="you logo"
       />
-      <el-input
+      <t-input
           placeholder="Please input" style="width: 240px" disabled
       />
-    </el-col>
-    <el-col :span="12">
-      <el-menu default-active="1" mode="horizontal" :ellipsis="false"
-               background-color="#fff; border-bottom: 2px solid red">
-        <div class="flex-grow"></div>
-        <el-tooltip content="首页">
-          <el-menu-item index="1">
-            <el-button text size="large" :auto-insert-space="true" style="width: 120px">
-              <template #icon>
-                <el-icon :size="80" :color="red">
-                  <House/>
-                </el-icon>
-              </template>
-            </el-button>
-          </el-menu-item>
-        </el-tooltip>
-        <el-tooltip content="朋友">
-          <el-menu-item index="2" disabled>朋友</el-menu-item>
-        </el-tooltip>
-        <el-menu-item index="3" disabled>其它</el-menu-item>
-        <div class="flex-grow"></div>
-      </el-menu>
-    </el-col>
-    <el-col :span="6" style="display: flex; justify-content: flex-end;">
-      <el-tooltip content="更多">
-        <el-button size="large" circle>
-          <el-icon size="28">
-            <Grid/>
-          </el-icon>
-        </el-button>
-      </el-tooltip>
-      <el-tooltip content="账户">
-        <el-dropdown trigger="click" disabled>
-          <el-button circle color="#20B2AA" size="large" style="margin-left: 8px;">test</el-button>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item :icon="Plus">Action 1</el-dropdown-item>
-              <el-dropdown-item :icon="CirclePlusFilled">
-                Action 2
-              </el-dropdown-item>
-              <el-dropdown-item :icon="CirclePlus">Action 3</el-dropdown-item>
-              <el-dropdown-item :icon="Check">Action 4</el-dropdown-item>
-              <el-dropdown-item :icon="CircleCheck" divided>退出</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
-      </el-tooltip>
-
-    </el-col>
-  </el-row>
+    </t-col>
+    <t-col :span="12">
+      <t-menu value="1" mode="horizontal">
+        <t-menu-item value="1">
+          <t-tooltip content="首页">
+            <t-button variant="text" size="large" style="width: 120px">
+              <HomeIcon size="28px"/>
+            </t-button>
+          </t-tooltip>
+        </t-menu-item>
+        <t-menu-item value="2" disabled>朋友</t-menu-item>
+        <t-menu-item value="3" disabled>其它</t-menu-item>
+      </t-menu>
+    </t-col>
+    <t-col :span="6" style="display: flex; justify-content: flex-end;">
+      <t-tooltip content="更多">
+        <t-button shape="circle" size="large">
+          <ViewModuleIcon size="24px"/>
+        </t-button>
+      </t-tooltip>
+      <t-tooltip content="账户">
+        <t-dropdown
+            trigger="click"
+            disabled
+            :options="accountOptions"
+            maxColumnWidth="140"
+        >
+          <t-button shape="circle" size="large" style="margin-left: 8px; background-color: #20B2AA; color: #fff;">
+            test
+          </t-button>
+        </t-dropdown>
+      </t-tooltip>
+    </t-col>
+  </t-row>
 </template>
 <style scoped>
-.flex-grow {
-  flex-grow: 1;
+.t-menu--horizontal .t-menu__item .t-button {
+  padding: 0;
 }
 
-.el-menu-item:hover {
-  background-color: transparent !important;
-}
-
-.el-menu--horizontal > .el-menu-item.is-active{
+.t-menu--horizontal .t-menu__item.t-is-active {
   border-bottom: 4px solid blue;
 }
-
 </style>
 
 <script setup>
-import {
-  ElButton,
-  ElCol,
-  ElInput,
-  ElMenu,
-  ElMenuItem,
-  ElRow,
-  ElIcon,
-  ElDropdown,
-  ElDropdownMenu,
-  ElDropdownItem,
-  ElTooltip
-} from "element-plus";// 按需引入组件
-import {House, Grid, CircleCheck} from '@element-plus/icons-vue' // 按需引入 Icon 图标
+import {HomeIcon, ViewModuleIcon} from 'tdesign-icons-vue-next' // 按需引入 Icon 图标
+
+// 账户下拉菜单
+const accountOptions = [
+  {content: 'Action 1', value: 'action1'},
+  {content: 'Action 2', value: 'action2'},
+  {content: 'Action 3', value: 'action3'},
+  {content: 'Action 4', value: 'action4'},
+  {content: '退出', value: 'logout', divider: true}
+];
 </script>
