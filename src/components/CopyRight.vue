@@ -1,14 +1,16 @@
 <template>
-  <div class="text-bg-light p-3 bg-transparent">
-    <p class="text-center m-0">
-      <router-link :to="{'name': 'index'}" style="text-decoration: none;" class="text-muted">alsoapp.com&nbsp;
-      </router-link>&copy;<span id="years_now" class="font-weight-bold">&nbsp;{{
-        new Date().getFullYear()
-      }}&nbsp;</span>
-      <span class="font-weight-bold">All&nbsp;Rights&nbsp;Reserved</span>&nbsp;&nbsp;
-      <span class="text-muted">version:{{ APP_VERBOSE }}</span>&nbsp;&nbsp;
-      <router-link :to="{'name': 'privacy'}" style="text-decoration: none;" class="btn btn-light">隐私政策</router-link>
-      &nbsp;|&nbsp;<a class="btn btn-light" href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank">licenses</a>
+  <div class="py-3 text-center text-sm text-gray-500">
+    <p class="m-0">
+      <router-link :to="{'name': 'index'}" class="no-underline hover:text-brand">alsoapp.com&nbsp;</router-link>
+      &copy;
+      <span class="font-bold">&nbsp;{{ new Date().getFullYear() }}&nbsp;</span>
+      <span class="font-bold">All&nbsp;Rights&nbsp;Reserved</span>&nbsp;&nbsp;
+      <span>version:{{ APP_VERBOSE }}</span>&nbsp;&nbsp;
+      <router-link :to="{'name': 'privacy'}" class="no-underline px-2 text-gray-500 hover:text-brand">隐私政策</router-link>
+      &nbsp;|&nbsp;
+      <t-link theme="default" href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" hover="color">
+        licenses
+      </t-link>
     </p>
   </div>
 </template>
@@ -17,9 +19,6 @@
 import {computed} from "vue";
 
 const APP_VERBOSE = computed(() => {
-  return process.env.VUE_APP_VERSION+" | "+process.env.COMMIT_HASH.substring(0, 7);
+  return process.env.VUE_APP_VERSION + " | " + process.env.COMMIT_HASH.substring(0, 7);
 });
 </script>
-
-<style scoped>
-</style>

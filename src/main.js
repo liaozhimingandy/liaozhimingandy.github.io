@@ -1,13 +1,12 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 
-import { createPinia } from "pinia";
-// 引入bootstrap,外网下使用cdn加速
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'bootstrap/dist/js/bootstrap.min.js';
-import 'tdesign-vue-next/es/style/index.css' // 引入 TDesign 样式
+// Tailwind CSS 工具类
+import '@/assets/tailwind.css';
+// TDesign 组件样式
+import 'tdesign-vue-next/es/style/index.css'
 
 // 引入路由隐射表
 import router from "@/router";
 
-createApp(App).use(router).use(createPinia()).mount('#app')
+createApp(App).use(router).mount('#app')

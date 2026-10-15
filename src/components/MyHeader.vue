@@ -1,20 +1,15 @@
 <template>
-  <t-row class="align-items-center px-2" style="background-color: #fff; border-bottom: 2px solid red">
-    <t-col :span="6">
-      <img
-          style="width: 50px"
-          src="https://www.alsoapp.com/favicon.svg"
-          alt="you logo"
-      />
-      <t-input
-          placeholder="Please input" style="width: 240px" disabled
-      />
-    </t-col>
-    <t-col :span="12">
-      <t-menu value="1" mode="horizontal">
+  <div class="flex items-center gap-3 px-3 border-b-2 border-red-500 bg-white">
+    <div class="flex flex-1 items-center gap-2">
+      <img class="w-[50px]" src="https://www.alsoapp.com/favicon.svg" alt="you logo"/>
+      <t-input class="w-60" placeholder="Please input" disabled/>
+    </div>
+
+    <div class="flex-[2]">
+      <t-menu class="border-0" value="1" mode="horizontal">
         <t-menu-item value="1">
           <t-tooltip content="首页">
-            <t-button variant="text" size="large" style="width: 120px">
+            <t-button variant="text" size="large">
               <HomeIcon size="28px"/>
             </t-button>
           </t-tooltip>
@@ -22,37 +17,22 @@
         <t-menu-item value="2" disabled>朋友</t-menu-item>
         <t-menu-item value="3" disabled>其它</t-menu-item>
       </t-menu>
-    </t-col>
-    <t-col :span="6" style="display: flex; justify-content: flex-end;">
+    </div>
+
+    <div class="flex flex-1 items-center justify-end gap-2">
       <t-tooltip content="更多">
         <t-button shape="circle" size="large">
           <ViewModuleIcon size="24px"/>
         </t-button>
       </t-tooltip>
       <t-tooltip content="账户">
-        <t-dropdown
-            trigger="click"
-            disabled
-            :options="accountOptions"
-            maxColumnWidth="140"
-        >
-          <t-button shape="circle" size="large" style="margin-left: 8px; background-color: #20B2AA; color: #fff;">
-            test
-          </t-button>
+        <t-dropdown trigger="click" disabled :options="accountOptions" maxColumnWidth="140">
+          <t-button shape="circle" size="large" class="!bg-[#20B2AA] !text-white">test</t-button>
         </t-dropdown>
       </t-tooltip>
-    </t-col>
-  </t-row>
+    </div>
+  </div>
 </template>
-<style scoped>
-.t-menu--horizontal .t-menu__item .t-button {
-  padding: 0;
-}
-
-.t-menu--horizontal .t-menu__item.t-is-active {
-  border-bottom: 4px solid blue;
-}
-</style>
 
 <script setup>
 import {HomeIcon, ViewModuleIcon} from 'tdesign-icons-vue-next' // 按需引入 Icon 图标

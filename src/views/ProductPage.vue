@@ -1,32 +1,33 @@
 <template>
-  <div class="text-bg-dark p-3 text-center" sticky-top>Demo<B>&nbsp;•&nbsp;</B><span class="text-center">
-    <MyTooltip></MyTooltip>
-      </span>
+  <div class="sticky top-0 z-10 bg-gray-800 px-3 py-3 text-center text-white">
+    Demo<B>&nbsp;&bull;&nbsp;</B>
+    <MyTooltip/>
   </div>
 
   <!--内容-->
-  <div class="container content pt-2" v-for="(item, index) in products" :key="index">
-    <h6>{{ item.label }}</h6>
-    <hr>
-    <div class="row align-items-start">
-      <div class="col col-lg-3 col-6" v-for="(product, item_index) in item.data" :key="item_index">
-        <div class="clearfix rounded">
-          <img class="img-thumbnail m-1" style="width:60px; height: 60px;"
-               :src="product.image_src" alt="{{ product.label }}" data-src="holder.js/60x60">
-          <router-link v-if="product.to" :to="{'name': product.to}" style="text-decoration: none;"> {{
-              product.title
-            }}
-          </router-link>
-          <a v-else :href="product.href" style="text-decoration: none;"> {{
-              product.title
-            }}</a>
-        </div>
+  <div class="mx-auto max-w-7xl px-4 pt-2" v-for="(item, index) in products" :key="index">
+    <h6 class="mb-2 text-base font-semibold">{{ item.label }}</h6>
+    <hr class="mb-3">
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div
+          v-for="(product, item_index) in item.data"
+          :key="item_index"
+          class="flex items-center gap-2 rounded p-2 hover:ring-2 hover:ring-red-500"
+      >
+        <img class="h-[60px] w-[60px] rounded border border-gray-200" :src="product.image_src" :alt="product.label"/>
+        <router-link
+            v-if="product.to"
+            :to="{'name': product.to}"
+            class="text-gray-700 no-underline hover:text-brand"
+        >{{ product.title }}
+        </router-link>
+        <t-link v-else theme="default" hover="color" :href="product.href">{{ product.title }}</t-link>
       </div>
     </div>
   </div>
 
   <!-- 版权信息 -->
-  <CopyRight></CopyRight>
+  <CopyRight/>
 </template>
 
 <script setup>
@@ -89,12 +90,4 @@ const products = reactive(
       }
     ]
 )
-
-
 </script>
-
-<style scoped>
-.clearfix:hover {
-  border: 2px solid red;
-}
-</style>

@@ -3,7 +3,13 @@ const {defineConfig} = require('@vue/cli-service')
 
 const {GitRevisionPlugin} = require('git-revision-webpack-plugin');
 const gitRevisionPlugin = new GitRevisionPlugin();
-const moment = require("moment");
+
+// 格式化构建时间为 YYYY-MM-DD HH:mm:ss
+function formatBuildTime(date) {
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} `
+        + `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
 
 // git 信息获取容错: 当 git 不可用或命令执行失败时,降级为默认值,避免构建中断
 function safeGit(fn, fallback) {
@@ -25,7 +31,7 @@ module.exports = defineConfig({
                 'process.env.COMMIT_VERSION': JSON.stringify(safeGit(() => gitRevisionPlugin.version(), 'unknown')),
                 'process.env.COMMIT_HASH': JSON.stringify(safeGit(() => gitRevisionPlugin.commithash(), 'unknown')),
                 'process.env.BRANCH': JSON.stringify(safeGit(() => gitRevisionPlugin.branch(), 'unknown')),
-                'process.env.BUILD_TIME': JSON.stringify(moment().format('YYYY-MM-DD HH:mm:ss'))
+                'process.env.BUILD_TIME': JSON.stringify(formatBuildTime(new Date()))
             }),
         ]
     }

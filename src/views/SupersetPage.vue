@@ -1,49 +1,45 @@
 <template>
-  <div class="text-bg-dark p-3 text-center sticky-top">
+  <div class="sticky top-0 z-10 bg-gray-800 px-3 py-3 text-center text-white">
     Superset<B>&nbsp;&bull;&nbsp;</B>
-    <MyTooltip></MyTooltip>
+    <MyTooltip/>
   </div>
-  <div class="container pt-3">
-    <h4>可视化-Superset</h4>
-    <div class="row">
-      <div id="carouselExampleCaptions" class="carousel carousel-dark slide" data-bs-ride="carousel">
-        <div class="carousel-inner">
-          <div class="carousel-item" v-for="(item, index) in items.carousels" :key="index" :class="{'active': !index}">
-            <img :src="item.image_src" class="d-block w-100 h-50" :alt="item.alt"/>
-            <div class="carousel-caption d-none d-md-block">
-              <h5>{{ item.title }}</h5>
-              <p>{{ item.text }}</p>
-            </div>
-          </div>
 
-        </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleCaptions"
-                data-bs-slide="prev"><span class="carousel-control-prev-icon" aria-hidden="true"></span> <span
-            class="visually-hidden">Previous</span></button>
-        <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleCaptions"
-                data-bs-slide="next"><span class="carousel-control-next-icon" aria-hidden="true"></span> <span
-            class="visually-hidden">Next</span></button>
-      </div>
-    </div>
+  <div class="mx-auto max-w-7xl px-4 pt-3">
+    <h4 class="mb-3 text-xl font-semibold">可视化-Superset</h4>
 
-    <h5 class="pt-2">项目案例</h5>
-    <div class="row row-cols-md-4">
-
-      <div class="col" v-for="(item, index) in items.templates" :key="index">
-        <div class="card" style="width: 20rem;">
-          <img :src="item.image_src" class="card-img-top" :alt="item.alt"/>
-          <div class="card-body">
-            <h5 class="card-title">{{ item.title }}</h5>
-            <p class="card-text">{{ item.text }}</p>
+    <!-- 轮播 -->
+    <t-swiper :duration="3000" :interval="5000" class="mb-4">
+      <t-swiper-item v-for="(item, index) in items.carousels" :key="index">
+        <div class="relative">
+          <img :src="item.image_src" :alt="item.alt" class="h-72 w-full object-cover"/>
+          <div class="absolute inset-x-0 bottom-0 bg-black/40 p-4 text-white">
+            <h5 class="text-lg font-semibold">{{ item.title }}</h5>
+            <p class="text-sm">{{ item.text }}</p>
           </div>
         </div>
-      </div>
+      </t-swiper-item>
+    </t-swiper>
 
+    <h5 class="pt-2 text-lg font-semibold">项目案例</h5>
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <t-card
+          v-for="(item, index) in items.templates"
+          :key="index"
+          :bordered="true"
+          header-bordered
+          :title="item.title"
+      >
+        <template #title>
+          <span class="font-semibold">{{ item.title }}</span>
+        </template>
+        <img :src="item.image_src" :alt="item.alt" class="h-40 w-full object-cover"/>
+        <p class="pt-2 text-sm text-gray-500">{{ item.text }}</p>
+      </t-card>
     </div>
   </div>
+
   <!-- 版权信息 -->
   <CopyRight/>
-
 </template>
 
 <script setup>
@@ -106,10 +102,4 @@ const items = reactive({
     }
   ]
 });
-
-
 </script>
-
-<style scoped>
-
-</style>
