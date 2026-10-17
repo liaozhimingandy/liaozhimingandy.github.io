@@ -1,39 +1,31 @@
 <template>
-  <div class="sticky top-0 z-10 bg-gray-800 px-3 py-3 text-center text-white">
-    Demo<B>&nbsp;&bull;&nbsp;</B>
-    <MyTooltip/>
-  </div>
-
-  <!--内容-->
-  <div class="mx-auto max-w-7xl px-4 pt-2" v-for="(item, index) in products" :key="index">
-    <h6 class="mb-2 text-base font-semibold">{{ item.label }}</h6>
-    <hr class="mb-3">
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <div
-          v-for="(product, item_index) in item.data"
-          :key="item_index"
-          class="flex items-center gap-2 rounded p-2 hover:ring-2 hover:ring-red-500"
-      >
-        <img class="h-[60px] w-[60px] rounded border border-gray-200" :src="product.image_src" :alt="product.label"/>
-        <router-link
-            v-if="product.to"
-            :to="{'name': product.to}"
-            class="text-gray-700 no-underline hover:text-brand"
-        >{{ product.title }}
-        </router-link>
-        <t-link v-else theme="default" hover="color" :href="product.href">{{ product.title }}</t-link>
+  <PageLayout title="Demo">
+    <div v-for="(item, index) in products" :key="index" class="mb-4">
+      <h6 class="mb-2 text-base font-semibold">{{ item.label }}</h6>
+      <hr class="mb-3">
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div
+            v-for="(product, item_index) in item.data"
+            :key="item_index"
+            class="flex items-center gap-2 rounded p-2 hover:ring-2 hover:ring-red-500"
+        >
+          <img class="h-[60px] w-[60px] rounded border border-gray-200" :src="product.image_src" :alt="product.label"/>
+          <router-link
+              v-if="product.to"
+              :to="{'name': product.to}"
+              class="text-gray-700 no-underline hover:text-brand"
+          >{{ product.title }}
+          </router-link>
+          <t-link v-else theme="default" hover="color" :href="product.href" target="_blank">{{ product.title }}</t-link>
+        </div>
       </div>
     </div>
-  </div>
-
-  <!-- 版权信息 -->
-  <CopyRight/>
+  </PageLayout>
 </template>
 
 <script setup>
 import {reactive} from "vue";
-import CopyRight from "@/components/CopyRight";
-import MyTooltip from "@/components/MyTooltip";
+import PageLayout from "@/components/PageLayout.vue";
 
 // data to display
 const products = reactive(
@@ -73,18 +65,6 @@ const products = reactive(
             "href": "https://www.alsoapp.com/docs-note-rhapsody/",
             "image_src": "/static/note.svg",
             "label": "Rhapsody笔记"
-          }
-        ]
-      },
-      {
-        "category": "hipmessage",
-        "label": "医院信息平台互联互通相关",
-        "data": [
-          {
-            "title": "医院信息平台交互规范",
-            "href": "/hipmessageservice/",
-            "image_src": "/static/note.svg",
-            "label": "医院信息平台交互规范"
           }
         ]
       }

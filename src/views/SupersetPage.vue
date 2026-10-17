@@ -1,10 +1,5 @@
 <template>
-  <div class="sticky top-0 z-10 bg-gray-800 px-3 py-3 text-center text-white">
-    Superset<B>&nbsp;&bull;&nbsp;</B>
-    <MyTooltip/>
-  </div>
-
-  <div class="mx-auto max-w-7xl px-4 pt-3">
+  <PageLayout title="Superset">
     <h4 class="mb-3 text-xl font-semibold">可视化-Superset</h4>
 
     <!-- 轮播 -->
@@ -36,17 +31,12 @@
         <p class="pt-2 text-sm text-gray-500">{{ item.text }}</p>
       </t-card>
     </div>
-  </div>
-
-  <!-- 版权信息 -->
-  <CopyRight/>
+  </PageLayout>
 </template>
 
 <script setup>
 import {reactive} from "vue";
-
-import CopyRight from "@/components/CopyRight";
-import MyTooltip from "@/components/MyTooltip";
+import PageLayout from "@/components/PageLayout.vue";
 
 const items = reactive({
   "carousels": [

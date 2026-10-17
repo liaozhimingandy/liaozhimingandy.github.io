@@ -1,20 +1,32 @@
 <template>
-  <div :style="backgroundStyle">
+  <div :style="backgroundStyle" class="flex min-h-screen flex-col">
     <nav class="sticky top-0 z-10 border-b border-gray-200 bg-gray-50">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
-        <router-link to="/">
-          <img src="https://www.alsoapp.com/favicon.svg" alt="alsoapp" width="30" height="24">
+        <router-link :to="{'name': 'index'}" class="flex items-center gap-2 no-underline">
+          <img src="/favicon.svg" alt="alsoapp" width="30" height="24">
+          <span class="text-base font-semibold text-gray-700">alsoapp</span>
         </router-link>
-        <span>
+        <div class="flex items-center gap-4">
+          <router-link
+              :to="{'name': 'products'}"
+              class="text-sm text-gray-600 no-underline hover:text-brand"
+          >产品
+          </router-link>
+          <router-link
+              :to="{'name': 'resumes', 'params': {'user_id': 'liaozhiming'}}"
+              class="text-sm text-gray-600 no-underline hover:text-brand"
+          >简历
+          </router-link>
           <t-link theme="default" hover="color" href="mailto:contact@alsoapp.com">意见反馈</t-link>
-        </span>
+        </div>
       </div>
     </nav>
 
-    <div class="mx-auto max-w-7xl px-4 pt-6">
-      <t-alert theme="warning" :close="true" class="mb-4">
+    <div class="mx-auto w-full max-w-7xl flex-1 px-4 pt-6">
+      <t-alert theme="info" :close="true" class="mb-4">
         <template #message>
-          <router-link :to="{'name': 'products'}" class="text-gray-500 hover:text-brand">更多</router-link>
+          <span class="text-gray-600">常用网站与工具导航，</span>
+          <router-link :to="{'name': 'products'}" class="text-gray-600 hover:text-brand">查看更多产品</router-link>
         </template>
       </t-alert>
 
