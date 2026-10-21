@@ -13,6 +13,11 @@
           >产品
           </router-link>
           <router-link
+              :to="{'name': 'wedesk'}"
+              class="text-sm text-gray-600 no-underline hover:text-brand"
+          >WeDesk
+          </router-link>
+          <router-link
               :to="{'name': 'resumes', 'params': {'user_id': 'liaozhiming'}}"
               class="text-sm text-gray-600 no-underline hover:text-brand"
           >简历

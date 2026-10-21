@@ -42,6 +42,13 @@ const products = reactive(
             "label": "superset"
           },
           {
+            "title": "WeDesk 远程桌面",
+            "href": "/wedesk/",
+            "to": "wedesk",
+            "image_src": "/static/note.svg",
+            "label": "WeDesk"
+          },
+          {
             "title": "Rhapsody",
             "href": "https://www.alsoapp.com/docs-rhapsody/6.9.1/en/the-rhapsody-platform.html",
             "to": "",

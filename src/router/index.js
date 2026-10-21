@@ -5,6 +5,7 @@ import NotFoundPage from "@/views/NotFoundPage"
 import ProductPage from "@/views/ProductPage"
 import ResumePage from "@/views/ResumePage"
 import SupersetPage from "@/views/SupersetPage"
+import WedeskPage from "@/views/WedeskPage.vue";
 import PrivacyView from "@/views/PrivacyPage.vue";
 import TestPage from "@/views/TestPage.vue";
 import LoginPage from "@/views/LoginPage.vue";
@@ -14,6 +15,7 @@ const routes = [
     {path: '/', component: HomePage, name: 'index', meta: {title: "欢迎使用"}},
     {path: '/products/superset', component: SupersetPage, name: 'superset', meta: {title: "superset"}},
     {path: '/products/', component: ProductPage, name: 'products', meta: {title: "产品信息"}},
+    {path: '/wedesk/', component: WedeskPage, name: 'wedesk', meta: {title: "WeDesk 远程桌面"}},
     {path: '/resumes/:user_id/', component: ResumePage, name: 'resumes', meta: {title: "简历信息"}},
     {path: '/privacy/', component: PrivacyView, name: 'privacy'},
     {path: '/test/', component: TestPage, name: 'test'},
