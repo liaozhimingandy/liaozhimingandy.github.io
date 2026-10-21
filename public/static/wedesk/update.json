@@ -1,0 +1,76 @@
+{
+  "app_id": "wedesk",
+  "publish_time": "2026-10-21T14:30:00+08:00",
+  "global_release_note": "本次迭代：优化P2P内网直连逻辑，修复Symmetric NAT下强制走中继的问题；新增设备证书稳定性优化",
+  "packages": [
+    {
+      "platform": "windows",
+      "arch": "x64",
+      "version": "1.2.5",
+      "version_code": 125,
+      "min_supported_version_code": 100,
+      "is_force": false,
+      "update_title": "Wedesk 新版本可用",
+      "update_desc": "✅ 优化内网P2P，减少不必要中继\n✅ 修复WSL2网络场景下5188端口连通问题\n✅ 优化证书鉴权逻辑",
+      "download_url": "https://xxx.com/release/wedesk-windows-x64-v1.2.5.exe",
+      "sha256": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "size": 12582912,
+      "update_type": "full",
+      "enabled": true
+    },
+    {
+      "platform": "android",
+      "arch": "arm64-v8a",
+      "version": "1.2.5",
+      "version_code": 125,
+      "min_supported_version_code": 100,
+      "is_force": true,
+      "update_title": "【重要强制更新】Wedesk安卓端",
+      "update_desc": "⚠️ 旧版本存在信令握手安全漏洞，必须更新才能继续使用\n✅ 优化安卓端UDP中继连通性\n✅ 修复NAT类型识别问题",
+      "download_url": "https://xxx.com/release/wedesk-android-arm64-v8a.apk",
+      "sha256": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "size": 6291456,
+      "update_type": "full",
+      "enabled": true
+    },
+    {
+      "platform": "linux",
+      "arch": "x64",
+      "version": "1.2.5",
+      "version_code": 125,
+      "min_supported_version_code": 100,
+      "is_force": false,
+      "update_title": "Wedesk Linux 新版本",
+      "update_desc": "✅ 优化hbbs/hbbr服务日志输出\n✅ 优化多节点调度逻辑",
+      "download_url": "https://xxx.com/release/wedesk-linux-x64-v1.2.5.AppImage",
+      "sha256": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "size": 14234624,
+      "update_type": "full",
+      "enabled": true
+    },
+    {
+      "platform": "macos",
+      "arch": "arm64",
+      "version": "1.2.5",
+      "version_code": 125,
+      "min_supported_version_code": 100,
+      "is_force": false,
+      "update_title": "Wedesk Mac 新版本",
+      "update_desc": "✅ 适配macOS新权限策略",
+      "download_url": "https://xxx.com/release/wedesk-macos-arm64-v1.2.5.dmg",
+      "sha256": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "size": 13124672,
+      "update_type": "full",
+      "enabled": true
+    }
+  ],
+  "gray_release": {
+    "enable": false,
+    "percent": 0.2,
+    "device_white_list": []
+  },
+  "metadata": {
+    "sign": "",
+    "cache_ttl": 300
+  }
+}
