@@ -49,6 +49,13 @@ const products = reactive(
             "label": "WeDesk"
           },
           {
+            "title": "在吗 - 定时签到",
+            "href": "/zaima/",
+            "to": "zaima",
+            "image_src": "/static/note.svg",
+            "label": "在吗"
+          },
+          {
             "title": "Rhapsody",
             "href": "https://www.alsoapp.com/docs-rhapsody/6.9.1/en/the-rhapsody-platform.html",
             "to": "",

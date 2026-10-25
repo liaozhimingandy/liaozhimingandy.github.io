@@ -18,6 +18,11 @@
           >WeDesk
           </router-link>
           <router-link
+              :to="{'name': 'zaima'}"
+              class="text-sm text-gray-600 no-underline hover:text-brand"
+          >在吗
+          </router-link>
+          <router-link
               :to="{'name': 'resumes', 'params': {'user_id': 'liaozhiming'}}"
               class="text-sm text-gray-600 no-underline hover:text-brand"
           >简历
