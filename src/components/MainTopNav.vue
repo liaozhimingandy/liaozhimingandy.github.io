@@ -97,6 +97,6 @@ function onAccountMenuClick(item) {
 
 // 打开本地邮箱,发送建议
 function openEmailClient() {
-  window.location.href = `mailto:liaozhimingandy@qq.com?subject=建议或意见`;
+  window.location.href = `mailto:contact@alsoapp.com?subject=建议或意见`;
 }
 </script>
