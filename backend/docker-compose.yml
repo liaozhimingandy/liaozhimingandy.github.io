@@ -1,0 +1,63 @@
+# AP（Also Apps）后端云主机部署（外部托管 PostgreSQL，容器只跑 API）。
+# 用法：
+#   1) cp .env.example .env  并填入真实数据库口令等；
+#   2) docker compose up -d --build
+#      init-db 会先幂等执行 sql/001_tool_configs.sql 建表，成功后 api 才启动。
+#   3) docker compose logs -f api 观察启动；/v1/health 做健康检查。
+#
+# 数据库在云厂商托管（AP_PG_HOST:AP_PG_PORT，6432 通常是 PgBouncer 连接池端口），
+# 不在本 compose 里再起一个 postgres，避免双写与端口冲突。
+
+services:
+  # 一次性初始化：幂等建 tool_configs 与门户五表 + 索引 + RLS 策略 + 种子。
+  # 通过 PGPASSWORD 传口令，绕开密码含 '@' 的 DSN 解析问题。
+  #
+  # 为什么只跑 001：云托管库常只给应用账号 CREATEDB 而不给 CREATEROLE（实测本部署
+  # tools 账号即如此）。002_app_role.sql 要 CREATE ROLE、003_migration.sql 末尾要
+  # GRANT ... TO tools_app，二者在该权限下必然报错并污染部署日志。而 001 已含完整
+  # 表结构 + FORCE ROW LEVEL SECURITY，用「非超级用户、不带 BYPASSRLS」的应用账号
+  # 直连时 RLS 已实测生效，无需额外的 tools_app 角色。
+  # 002/003 仅留给「有管理员权限、且确有 v0.2 旧库要升级」的场景手动执行。
+  # 不设 ON_ERROR_STOP：重复执行等可容忍错误不阻断部署；部署后请
+  # `docker compose logs init-db` 核对有无真实报错。
+  init-db:
+    image: postgres:16-alpine
+    restart: "no"
+    environment:
+      PGHOST: ${AP_PG_HOST}
+      PGPORT: ${AP_PG_PORT:-6432}
+      PGUSER: ${AP_PG_USER}
+      PGPASSWORD: ${AP_PG_PASSWORD}
+      PGDATABASE: ${AP_PG_NAME}
+    volumes:
+      - ./sql:/sql:ro
+    command: >
+      sh -c 'echo "== applying 001_tool_configs.sql ==";
+        psql -v ON_ERROR_STOP=1 -f /sql/001_tool_configs.sql;
+        echo "== applying 004_apps_portal.sql ==";
+        psql -v ON_ERROR_STOP=1 -f /sql/004_apps_portal.sql;
+        echo "== applying 005_apps_portal_seed.sql ==";
+        psql -v ON_ERROR_STOP=1 -f /sql/005_apps_portal_seed.sql'
+
+  # API 服务：FastAPI + uvicorn，容器内监听 0.0.0.0:$AP_PORT
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      init-db:
+        condition: service_completed_successfully
+    env_file:
+      - .env
+    environment:
+      # 覆盖镜像内默认，强制容器对外监听
+      AP_HOST: 0.0.0.0
+      AP_PORT: ${AP_PORT:-8080}
+    ports:
+      # 只绑回环：容器内是裸 HTTP，对外必须经 https://api-tools.alsoapp.com 反代终结 TLS。
+      # 反代在别的机器时，用 .env 的 AP_BIND_ADDR 指定可达网卡，切勿直接暴露公网。
+      - "${AP_BIND_ADDR:-127.0.0.1}:${AP_PORT:-8080}:${AP_PORT:-8080}"
+    read_only: true
+    tmpfs:
+      - /tmp
