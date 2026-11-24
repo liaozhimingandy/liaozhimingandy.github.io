@@ -7,8 +7,9 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
  * 采用 history 模式 + 统一尾斜杠（/wedesk/），理由：
  *   1. URL 干净（无 #），与旧官网 /wedesk/ 形态完全一致，旧收录链接零迁移成本；
  *   2. 后端（FastAPI）托管时 spa_fallback 对任意路径返回 index.html，刷新不 404；
- *   3. GitHub Pages 纯静态托管用 404.html 兜底（public/404.html 把原始路径暂存
- *      sessionStorage 后回到首页，main.ts 挂载后 replace 回原路径），刷新同样不 404；
+ *   3. GitHub Pages 纯静态托管：部署工作流在 build 后 cp index.html 为 404.html，
+ *      Pages 对任意深路径返回同一份 SPA 入口，vue-router 按 location.pathname 直接
+ *      渲染对应页面，不依赖 sessionStorage 跳转；
  *   4. OAuth2/Logto 的 redirect_uri 禁止带 fragment(#)，history 模式回调落在
  *      /?code=&state=，由 main.ts 在挂载前消费（详见 auth service）。
  *

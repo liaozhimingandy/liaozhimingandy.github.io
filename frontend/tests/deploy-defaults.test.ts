@@ -77,8 +77,17 @@ test('后端镜像名固定为 fastapi-ap', () => {
   assert.doesNotMatch(read('backend/docker-compose.yml'), /fastapi-tools/)
 })
 
-test('部署作业输出 CDN cache-buster 验证地址', () => {
+test('部署作业输出 CDN cache-buster 验证地址（history 路径，无 #）', () => {
   const wf = read('.github/workflows/deploy-github-pages.yml')
   assert.match(wf, /公网验证地址（绕过 CDN 缓存）/)
-  assert.match(wf, /https:\/\/www\.alsoapp\.com\/\?v=\$\{TS\}#\/apps/)
+  assert.match(wf, /https:\/\/www\.alsoapp\.com\/\?v=\$\{TS\}/)
+  assert.doesNotMatch(wf, /\?v=\$\{TS\}#/)
+})
+
+test('构建后 cp index.html 为 404.html（history 深路径兜底，源码不维护 404）', () => {
+  const wf = read('.github/workflows/deploy-github-pages.yml')
+  assert.match(wf, /working-directory: frontend\/dist\n\s+run: cp index\.html 404\.html/)
+  assert.doesNotMatch(wf, /spa-fallback/)
+  const pkg = JSON.parse(read('frontend/package.json'))
+  assert.doesNotMatch(pkg.scripts.build, /spa-fallback/)
 })

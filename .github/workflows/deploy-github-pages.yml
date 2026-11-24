@@ -3,7 +3,9 @@
 #
 # 部署形态（与 backend/.env.example、deploy-defaults.test.ts 的契约一致）：
 #   - 自定义域 www.alsoapp.com 根路径部署（Vite base=/，CNAME 在 frontend/public/CNAME）；
-#   - 前端 hash 路由（/#/apps），无需 history 回退配置；
+#   - 前端 history 路由（/products/ 等），深路径靠构建产物 dist/404.html 兜底：
+#     构建后 cp dist/index.html dist/404.html，Pages 对未知路径返回同一份 SPA 入口，
+#     vue-router 按当前 URL 直接渲染，无需 sessionStorage 跳转；
 #   - API 根 https://api.alsoapp.com（后端镜像 fastapi-ap，跨源，CORS 白名单含本域）；
 #   - Logto 回调/登出回跳 = https://www.alsoapp.com/（与访问域同 origin，不带 fragment，
 #     否则 301 跨 origin 丢 sessionStorage 且未在 Logto 登记）。
@@ -60,6 +62,12 @@ jobs:
           VITE_LOGTO_POST_LOGOUT_REDIRECT_URI: ${{ vars.VITE_LOGTO_POST_LOGOUT_REDIRECT_URI || 'https://www.alsoapp.com/' }}
         run: npm run build
 
+      # history 路由深路径兜底：Pages 对找不到的路径返回 404.html，
+      # 内容直接等于 index.html，由 vue-router 按当前 URL 渲染对应页面。
+      - name: 生成 404.html（cp index.html）
+        working-directory: frontend/dist
+        run: cp index.html 404.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -80,5 +88,5 @@ jobs:
       - name: Output cache-buster URL
         run: |
           TS=$(date +%s)
-          echo "公网验证地址（绕过 CDN 缓存）: https://www.alsoapp.com/?v=${TS}#/apps"
-          echo "部署完成。应用中心入口: https://www.alsoapp.com/#/apps"
+          echo "公网验证地址（绕过 CDN 缓存）: https://www.alsoapp.com/?v=${TS}"
+          echo "部署完成。应用中心入口: https://www.alsoapp.com/products/"
