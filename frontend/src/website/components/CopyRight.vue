@@ -12,11 +12,15 @@
         licenses
       </t-link>
     </p>
+    <p class="m-0 mt-1 text-xs">
+      <BeianInfo/>
+    </p>
   </div>
 </template>
 
 <script setup>
 import {computed} from "vue";
+import BeianInfo from "@/components/BeianInfo.vue";
 
 // 构建版本信息:Vite 下经 define 注入 __APP_VERSION__ / __COMMIT_HASH__(见 vite.config.ts),
 // 不可用(如单测环境)时降级为 unknown
