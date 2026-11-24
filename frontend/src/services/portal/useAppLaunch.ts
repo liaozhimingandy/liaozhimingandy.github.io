@@ -9,6 +9,7 @@
  */
 
 import { MessagePlugin } from 'tdesign-vue-next'
+import { useRouter } from 'vue-router'
 import {
   checkLaunch,
   recordVisit,
@@ -25,6 +26,7 @@ import {
 
 export function useAppLaunch() {
   const { touchRecent } = usePortalStore()
+  const router = useRouter()
 
   async function launch(app: PortalApp): Promise<void> {
     let result
@@ -58,8 +60,11 @@ export function useAppLaunch() {
       await MessagePlugin.warning('该应用尚未开放访问')
       return
     }
+    // 本站相对路径：same_tab 时走 vue-router（SPA 无刷新）；外部地址按 open_mode 打开
+    const isInternal = url.startsWith('/')
     if (result.open_mode === 'same_tab') {
-      window.location.assign(url)
+      if (isInternal) void router.push(url)
+      else window.location.assign(url)
     } else {
       window.open(url, '_blank', 'noopener,noreferrer')
     }

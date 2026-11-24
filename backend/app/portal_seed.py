@@ -62,7 +62,7 @@ DEFAULT_APPS: tuple[AppRecord, ...] = (
         "SAFEKEEP", "锦囊 SafeKeep", "零知识在线密码保险库",
         "浏览器端 AES-256-GCM 加密，主密码与恢复码双钥匙解锁，服务端只保存密文。",
         app_type="tool", categories=("productivity", "other"),
-        launch_url="/safekeep/",
+        launch_url="/tools/safekeep/",
         status="published", published=True, featured=True, sort_order=5,
     ),
     _app(

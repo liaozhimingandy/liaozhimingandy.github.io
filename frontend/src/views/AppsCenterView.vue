@@ -60,6 +60,9 @@ const showGrouped = computed(
   () => view.value === 'all' && !keyword.value.trim() && category.value === 'all',
 )
 
+/** 分类 chip 数据源：剔除种子里的 'all' 伪分类（与「全部应用」tab 语义重复） */
+const filterCategories = computed(() => state.categories.filter((c) => c.code !== 'all'))
+
 const VIEW_TITLES: Record<string, string> = {
   favorites: '我的收藏',
   recent: '最近使用',
@@ -135,7 +138,7 @@ function clearFilters(): void {
       </t-input>
     </div>
 
-    <t-tabs v-model="view" class="mb-7">
+    <t-tabs v-model="view" class="view-tabs">
       <t-tab-panel value="all" label="全部应用" />
       <t-tab-panel value="favorites" label="我的收藏" />
       <t-tab-panel value="recent" label="最近使用" />
@@ -143,7 +146,7 @@ function clearFilters(): void {
 
     <div class="category-bar">
       <button
-        v-for="cat in state.categories"
+        v-for="cat in filterCategories"
         :key="cat.code"
         type="button"
         class="category-chip"
@@ -176,18 +179,28 @@ function clearFilters(): void {
 </template>
 
 <style scoped>
+/* 视图 tab 与分类 chip 行之间留足呼吸感，避免两行筛选控件挤在一起 */
+.view-tabs {
+  margin-bottom: 4px;
+}
+.view-tabs :deep(.t-tabs__content) {
+  display: none;
+}
 .category-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
+  padding: 10px 0 4px;
+  border-top: 1px solid var(--color-line, #e7e9ec);
 }
 .category-chip {
-  padding: 8px 18px;
+  padding: 7px 16px;
   border-radius: 999px;
   border: 1px solid var(--color-line);
   background: var(--color-surface);
   color: var(--color-ink-2);
-  font-size: 13.5px;
+  font-size: 13px;
+  line-height: 1.4;
   cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
 }
@@ -204,7 +217,7 @@ function clearFilters(): void {
   margin-top: 36px;
 }
 .group-section:first-of-type {
-  margin-top: 28px;
+  margin-top: 30px;
 }
 .new-badge {
   display: inline-block;

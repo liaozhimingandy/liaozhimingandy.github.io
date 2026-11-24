@@ -14,9 +14,11 @@ import { listApps, type PortalApp } from '@/services/portal/api.ts'
 
 interface GridItem {
   name: string
-  /** 外部产品用 http(s) 地址（新标签打开）；本站产品用路由名（站内跳转） */
+  /** 外部产品用 http(s) 地址；本站产品用相对路径（站内跳转） */
   url?: string
   routeName?: string
+  /** 本站相对路径且 same_tab 时走 SPA 路由，其余新标签打开 */
+  sameTab?: boolean
   color: string
 }
 
@@ -49,6 +51,7 @@ const items = computed<GridItem[]>(() => {
   return apps.value.map((app, i) => ({
     name: app.name,
     url: app.launch_url || undefined,
+    sameTab: app.open_mode === 'same_tab',
     color: COLORS[i % COLORS.length],
   }))
 })
@@ -62,7 +65,8 @@ function open(item: GridItem): void {
   if (item.routeName) {
     void router.push({ name: item.routeName })
   } else if (item.url) {
-    window.open(item.url, '_blank', 'noopener')
+    if (item.sameTab && item.url.startsWith('/')) void router.push(item.url)
+    else window.open(item.url, '_blank', 'noopener')
   }
 }
 </script>
