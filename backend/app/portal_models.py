@@ -48,6 +48,7 @@ class AppRecord:
     is_featured: bool = False
     show_on_home: bool = False
     is_new: bool = False
+    is_offline_soon: bool = False
     sort_order: int = 0
     published_at: str | None = None
     created_by: str | None = None
@@ -76,6 +77,7 @@ class AppRecord:
             "is_featured": self.is_featured,
             "show_on_home": self.show_on_home,
             "is_new": self.is_new,
+            "is_offline_soon": self.is_offline_soon,
             "sort_order": self.sort_order,
             "published_at": self.published_at,
             "categories": list(self.categories),

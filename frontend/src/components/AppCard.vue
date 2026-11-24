@@ -52,6 +52,7 @@ function goDetail(): void {
           <span class="text-[15px] font-semibold text-ink leading-tight truncate">{{ app.name }}</span>
           <t-tag v-if="app.is_new" size="small" theme="success" variant="light">新</t-tag>
           <t-tag v-if="app.is_featured" size="small" theme="primary" variant="light">推荐</t-tag>
+          <t-tag v-if="app.is_offline_soon" size="small" theme="warning" variant="light">即将下线</t-tag>
           <LockOnIcon v-if="app.auth_required" size="14px" class="text-ink-3 shrink-0" />
         </div>
         <div v-if="app.subtitle && !compact" class="text-[12.5px] text-ink-3 mt-1 truncate">{{ app.subtitle }}</div>

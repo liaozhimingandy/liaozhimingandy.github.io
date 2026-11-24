@@ -19,3 +19,20 @@ export function oauthCallbackUrl(href: string): string {
   const u = new URL(href)
   return u.origin + u.pathname + u.search
 }
+
+/**
+ * 从回调 URL 读取查询参数（纯函数，显式忽略 fragment）。
+ * hash 路由会给回调补 '#/'，用 new URL().search 天然只取 '?' 与 '#' 之间的部分，
+ * 不受 fragment 污染；供「静默登录失败回调」检测复用同一套归一化规则。
+ */
+export function callbackQuery(href: string): URLSearchParams {
+  return new URL(href).searchParams
+}
+
+/**
+ * 当前 URL 是否是 Logto 的错误回调（prompt=none 探测无会话时会回跳带 error）。
+ * 只要带 error 参数即判定，不挑具体错误码——静默探测失败一律回退到交互登录页。
+ */
+export function isCallbackError(href: string): boolean {
+  return callbackQuery(href).has('error')
+}

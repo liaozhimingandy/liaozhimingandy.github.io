@@ -14,11 +14,28 @@
  */
 import LogtoClient from '@logto/browser'
 import { logtoConfig, type LogtoConfig } from '@/config.ts'
-import { oauthCallbackUrl } from './callback.ts'
+import { isCallbackError, oauthCallbackUrl } from './callback.ts'
 
 let client: LogtoClient | null = null
 /** main.ts 在挂载前 initAuth() 的结果缓存，供各视图同步读取初始登录态。 */
 let lastAuthState: AuthState | null = null
+
+/** 静默登录探测的会话标记：登录入口发起 prompt=none 时置位，回调落地后消费。 */
+const SILENT_PROBE_KEY = 'ap-logto-silent-probe'
+
+function markSilentProbe(): void {
+  try { sessionStorage.setItem(SILENT_PROBE_KEY, '1') } catch { /* 隐私模式忽略 */ }
+}
+/** 读取并清除静默探测标记（一次性消费，避免影响后续普通登录）。 */
+function consumeSilentProbe(): boolean {
+  try {
+    const v = sessionStorage.getItem(SILENT_PROBE_KEY) === '1'
+    sessionStorage.removeItem(SILENT_PROBE_KEY)
+    return v
+  } catch {
+    return false
+  }
+}
 
 function cfg(): LogtoConfig {
   return logtoConfig()
@@ -71,6 +88,10 @@ export function hasCallbackParams(): boolean {
  * 必须在 createApp().mount() 之前 await，保证回调完成后 UI 读到的是已登录态，
  * 且 URL 里的临时参数已清理（刷新不会再触发一次 handleSignInCallback）。
  * 任何异常都吞掉并降级为未登录，绝不阻断应用挂载。
+ *
+ * 静默登录回退：点登录先用 prompt=none 探测 Logto 会话；无会话时 Logto 回跳带
+ * error=login_required，这里识别「error 回调 + 静默标记」后回退到交互登录页。
+ * 静默标记一次性消费，因此交互登录被取消产生的 error 不会再回退（无死循环）。
  */
 export async function initAuth(): Promise<AuthState> {
   let c: LogtoClient | null
@@ -86,6 +107,21 @@ export async function initAuth(): Promise<AuthState> {
     return lastAuthState
   }
   const isCallback = hasCallbackParams()
+  const isErrorCallback = typeof window !== 'undefined' && isCallbackError(window.location.href)
+  // 一次性消费静默探测标记：无论本次是成功、失败还是普通访问都清掉，
+  // 避免残留标记把后续「交互登录取消」误判为静默失败（防循环的关键）。
+  const wasSilentProbe = consumeSilentProbe()
+
+  // 静默探测失败：error 回调 + 本次来自静默探测 → 清理参数后回退到交互登录。
+  if (isErrorCallback && wasSilentProbe) {
+    stripCallbackParams()
+    lastAuthState = { configured: true, authenticated: false, sub: null }
+    try {
+      await c.signIn({ redirectUri: cfg().redirectUri }) // 交互登录，会跳转离开页面
+    } catch { /* 跳转失败则维持未登录态，不阻断挂载 */ }
+    return lastAuthState
+  }
+
   try {
     if (isCallback) {
       // 关键：vue-router 的 hash history 已把回调 URL 补成 ...?state=xyz#/，
@@ -101,7 +137,7 @@ export async function initAuth(): Promise<AuthState> {
     return lastAuthState
   } finally {
     // 成功或失败都要清掉临时参数：失败时若保留 code/state，刷新会反复重放同一次回调。
-    if (isCallback) stripCallbackParams()
+    if (isCallback || isErrorCallback) stripCallbackParams()
   }
 }
 
@@ -116,18 +152,51 @@ function stripCallbackParams(): void {
   window.history.replaceState(window.history.state, '', clean)
 }
 
-/** 发起登录跳转（redirect_uri 白名单里的无 fragment 地址）。 */
-export async function signIn(): Promise<void> {
+/**
+ * 发起登录。
+ *
+ * 默认 silent=true：先用 prompt=none 探测 Logto 统一会话——
+ *  - 已在 Logto 登录（含其它 app 建立的会话）：免密直接带回 code，initAuth 消费即登录；
+ *  - 未登录：Logto 回跳带 error，initAuth 识别静默标记后回退到交互登录页。
+ * 探测只是一次无 UI 的跳转，用户无感知，符合 SSO 预期。
+ *
+ * silent=false 用于 initAuth 的回退与显式强制登录场景，直接走带交互的常规登录。
+ */
+export async function signIn(silent = true): Promise<void> {
   const c = getClient()
   if (!c) return
-  await c.signIn({ redirectUri: cfg().redirectUri })
+  if (silent) markSilentProbe()
+  const options = silent
+    ? { redirectUri: cfg().redirectUri, prompt: 'none' }
+    : { redirectUri: cfg().redirectUri }
+  try {
+    await c.signIn(options)
+  } catch (e) {
+    // 静默探测跳转失败：清掉标记，避免残留标记影响下次登录
+    if (silent) consumeSilentProbe()
+    throw e
+  }
 }
 
-/** 发起登出并回跳。 */
+/**
+ * 退出「本系统」：只清本地 token，不触碰 Logto 统一会话。
+ *
+ * 刻意不调用 SDK 的 signOut()——后者会跳到 Logto 的 end-session 端点清除统一会话，
+ * 导致所有共享该会话的 app 一起被登出。这里仅清本地凭证后回跳本站落地页，
+ * 其它 app 的会话与本地登录态均不受影响；下次点登录仍可静默恢复本系统登录态。
+ */
 export async function signOut(): Promise<void> {
   const c = getClient()
-  if (!c) return
-  await c.signOut(cfg().postLogoutRedirectUri)
+  if (!c) {
+    lastAuthState = { configured: false, authenticated: false, sub: null }
+    return
+  }
+  await c.clearAllTokens()
+  lastAuthState = { configured: true, authenticated: false, sub: null }
+  // 回跳本站落地页触发各视图重新读取登录态；不经过 Logto，不影响统一会话
+  if (typeof window !== 'undefined') {
+    window.location.assign(cfg().postLogoutRedirectUri)
+  }
 }
 
 /** 当前是否已登录。 */

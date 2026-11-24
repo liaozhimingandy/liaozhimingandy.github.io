@@ -30,7 +30,7 @@ def _app_payload(body: dict[str, Any]) -> dict[str, Any]:
     allowed = {
         "name", "subtitle", "description", "detail", "icon_url", "cover_url", "launch_url",
         "app_type", "open_mode", "status", "visibility", "auth_required", "is_featured",
-        "show_on_home", "is_new", "sort_order", "updated_by",
+        "show_on_home", "is_new", "is_offline_soon", "sort_order", "updated_by",
     }
     unknown = set(body) - allowed - {"code", "categories"}
     if unknown:
@@ -54,7 +54,7 @@ def _app_payload(body: dict[str, Any]) -> dict[str, Any]:
     ):
         if key in result and result[key] not in values:
             raise _api_error(422, "VALIDATION_ERROR", f"{key} 取值非法")
-    for key in ("auth_required", "is_featured", "show_on_home", "is_new"):
+    for key in ("auth_required", "is_featured", "show_on_home", "is_new", "is_offline_soon"):
         if key in result and not isinstance(result[key], bool):
             raise _api_error(422, "VALIDATION_ERROR", f"{key} 必须是布尔值")
     if "sort_order" in result:

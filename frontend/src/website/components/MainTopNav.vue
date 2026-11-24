@@ -49,25 +49,67 @@
           <img src="/static/icons/advice.svg" alt="Advice" width="26" height="26"/>
         </t-button>
       </t-tooltip>
-      <t-tooltip content="账户">
-        <t-dropdown trigger="click" :options="accountOptions" maxColumnWidth="140" @click="onAccountMenuClick">
-          <t-button shape="circle" size="large" class="!bg-[#20B2AA] !text-white">test</t-button>
+      <!-- Logto 可用才显示登录态；未配置时纯本地，不打扰 -->
+      <template v-if="enabled">
+        <t-dropdown v-if="sub" :options="accountOptions" @click="onAccountMenuClick">
+          <t-avatar
+            v-if="avatarUrl && !avatarFailed"
+            size="36px"
+            class="!bg-[#20B2AA] !text-white cursor-pointer"
+            :image="avatarUrl"
+            :title="displayName"
+            @error="avatarFailed = true"
+          />
+          <t-avatar
+            v-else
+            shape="round"
+            class="!bg-[#20B2AA] !text-white cursor-pointer !w-auto !px-3 !text-[13px]"
+            :title="displayName"
+          >{{ displayName }}</t-avatar>
         </t-dropdown>
-      </t-tooltip>
+        <t-tooltip v-else content="登录">
+          <t-button theme="primary" shape="round" variant="base" @click="login">登录</t-button>
+        </t-tooltip>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
-import {ref, h} from "vue";
+import {ref, h, computed, onMounted} from "vue";
 import {MessagePlugin} from 'tdesign-vue-next';
 import {LogoutIcon} from 'tdesign-icons-vue-next';
+import {logtoEnabled} from '@/config.ts';
+import {currentSub, displayUser, signIn, signOut} from '@/services/auth/logto.ts';
 
 // 当前激活的菜单索引
 const activeIndex = ref('1');
 // 颜色值
 const color_select = ref('#0089FF');
 const color = ref('#bfbfbf');
+
+// Logto 登录态（未配置时 enabled=false，整块登录 UI 不渲染）
+const enabled = logtoEnabled();
+const sub = ref(null);
+const user = ref(null);
+const avatarUrl = ref('');
+const avatarFailed = ref(false);
+const displayName = computed(() => user.value?.name || user.value?.email || sub.value?.slice(0, 8) || '');
+
+onMounted(async () => {
+  if (!enabled) return;
+  try {
+    sub.value = await currentSub();
+    if (sub.value) {
+      user.value = await displayUser();
+      avatarUrl.value = user.value?.picture || '';
+    }
+  } catch { /* 登录态读取失败时保持未登录展示 */ }
+});
+
+async function login() {
+  try { await signIn(); } catch { /* 跳转失败保持原状 */ }
+}
 
 // 账户下拉菜单
 const accountOptions = [
@@ -89,9 +131,13 @@ function isActive(index) {
 }
 
 // 账户菜单点击
-function onAccountMenuClick(item) {
+async function onAccountMenuClick(item) {
   if (item.value === 'logout') {
-    MessagePlugin.info('已退出登录');
+    try {
+      await signOut();
+    } catch {
+      MessagePlugin.info('退出失败，请重试');
+    }
   }
 }
 

@@ -107,28 +107,33 @@ function open(item: GridItem): void {
     <template #content>
       <div class="grid-panel">
         <div class="grid-items">
-          <button
+          <t-tooltip
             v-for="item in items"
             :key="item.name"
-            type="button"
-            class="grid-item"
-            @click="open(item)"
+            :content="item.name"
+            placement="top"
           >
-            <span
-              class="grid-badge"
-              :style="showIcon(item) ? undefined : { background: item.color }"
+            <button
+              type="button"
+              class="grid-item"
+              @click="open(item)"
             >
-              <img
-                v-if="showIcon(item)"
-                :src="item.iconUrl"
-                :alt="item.name"
-                class="grid-badge-img"
-                @error="onIconError(item)"
-              />
-              <template v-else>{{ badgeText(item.name) }}</template>
-            </span>
-            <span class="grid-name">{{ item.name }}</span>
-          </button>
+              <span
+                class="grid-badge"
+                :style="showIcon(item) ? undefined : { background: item.color }"
+              >
+                <img
+                  v-if="showIcon(item)"
+                  :src="item.iconUrl"
+                  :alt="item.name"
+                  class="grid-badge-img"
+                  @error="onIconError(item)"
+                />
+                <template v-else>{{ badgeText(item.name) }}</template>
+              </span>
+              <span class="grid-name">{{ item.name }}</span>
+            </button>
+          </t-tooltip>
         </div>
         <div class="grid-more">
           <router-link
@@ -194,10 +199,16 @@ function open(item: GridItem): void {
   object-fit: cover;
 }
 .grid-name {
+  display: block;
+  width: 100%;
   font-size: 12px;
   color: #1f2329;
   line-height: 1.2;
   text-align: center;
+  /* 单行显示，超出宽度省略；完整名称由 t-tooltip 在悬停/聚焦时展示 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .grid-more {
   border-top: 1px solid #e5e8ed;

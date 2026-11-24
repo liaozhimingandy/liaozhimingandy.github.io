@@ -28,7 +28,7 @@ from .portal_store import validate_launch_url
 _APP_COLS = (
     "id, code, name, subtitle, description, detail, icon_url, cover_url, launch_url, "
     "app_type, open_mode, status, visibility, auth_required, is_featured, show_on_home, "
-    "is_new, sort_order, published_at, created_by, updated_by, created_at, updated_at"
+    "is_new, is_offline_soon, sort_order, published_at, created_by, updated_by, created_at, updated_at"
 )
 
 _CAT_COLS = (
@@ -134,7 +134,7 @@ class PostgresPortalRepository:
         (
             rid, code, name, subtitle, description, detail, icon_url, cover_url, launch_url,
             app_type, open_mode, status, visibility, auth_required, is_featured, show_on_home,
-            is_new, sort_order, published_at, created_by, updated_by, created_at, updated_at,
+            is_new, is_offline_soon, sort_order, published_at, created_by, updated_by, created_at, updated_at,
         ) = row
         return AppRecord(
             id=str(rid), code=str(code), name=str(name), subtitle=str(subtitle or ""),
@@ -143,7 +143,8 @@ class PostgresPortalRepository:
             launch_url=str(launch_url or ""), app_type=app_type, open_mode=open_mode,
             status=status, visibility=visibility, auth_required=bool(auth_required),
             is_featured=bool(is_featured), show_on_home=bool(show_on_home),
-            is_new=bool(is_new), sort_order=int(sort_order), published_at=_iso(published_at),
+            is_new=bool(is_new), is_offline_soon=bool(is_offline_soon),
+            sort_order=int(sort_order), published_at=_iso(published_at),
             created_by=created_by, updated_by=updated_by,
             created_at=_iso(created_at) or "", updated_at=_iso(updated_at) or "",
             categories=self._categories_of(str(code)),
@@ -239,13 +240,14 @@ class PostgresPortalRepository:
                     "INSERT INTO portal_apps "
                     "(code, name, subtitle, description, detail, icon_url, cover_url, launch_url, "
                     "app_type, open_mode, status, visibility, auth_required, is_featured, "
-                    "show_on_home, is_new, sort_order, published_at, created_by, updated_by) "
-                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
+                    "show_on_home, is_new, is_offline_soon, sort_order, published_at, created_by, updated_by) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id",
                     (
                         app.code.upper(), app.name, app.subtitle, app.description, app.detail,
                         app.icon_url, app.cover_url, launch, app.app_type, app.open_mode,
                         app.status, app.visibility, app.auth_required, app.is_featured,
-                        app.show_on_home, app.is_new, app.sort_order, app.published_at,
+                        app.show_on_home, app.is_new, app.is_offline_soon,
+                        app.sort_order, app.published_at,
                         app.created_by, app.updated_by,
                     ),
                 )
@@ -273,7 +275,7 @@ class PostgresPortalRepository:
         allowed = {
             "name", "subtitle", "description", "detail", "icon_url", "cover_url", "launch_url",
             "app_type", "open_mode", "status", "visibility", "auth_required", "is_featured",
-            "show_on_home", "is_new", "sort_order", "updated_by",
+            "show_on_home", "is_new", "is_offline_soon", "sort_order", "updated_by",
         }
         sets, params = [], []
         for key, value in changes.items():

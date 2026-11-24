@@ -31,6 +31,7 @@ export interface PortalApp {
   is_featured: boolean
   show_on_home: boolean
   is_new: boolean
+  is_offline_soon: boolean
   sort_order: number
   published_at: string | null
   categories: string[]

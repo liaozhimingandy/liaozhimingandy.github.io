@@ -250,6 +250,38 @@ class TestAdmin(PortalApiTestBase):
             self.assertEqual(app["status"], "published")
             self.assertTrue(app["published_at"], "发布态必须自动写入 published_at")
 
+    def test_offline_soon_flag_roundtrip(self) -> None:
+        """「即将下线」标识需能被管理接口写入并公开返回，默认关闭。"""
+        with self.client() as c:
+            res = c.post(
+                "/v1/portal/admin/apps", headers=admin_headers(),
+                json={
+                    "code": "OFFSOON", "name": "将下线应用", "status": "published",
+                    "launch_url": "https://example.com/offsoon", "is_offline_soon": True,
+                },
+            )
+            self.assertEqual(res.status_code, 200, res.text)
+            aid = res.json()["app"]["id"]
+            self.assertTrue(res.json()["app"]["is_offline_soon"])
+
+            # 公开接口也要带出该标识，供前台卡片展示提醒
+            pub = c.get("/v1/portal/apps").json()["items"]
+            target = next(a for a in pub if a["id"] == aid)
+            self.assertTrue(target["is_offline_soon"])
+
+            # 更新接口可关闭；布尔类型必须校验
+            upd = c.put(
+                f"/v1/portal/admin/apps/{aid}", headers=admin_headers(),
+                json={"is_offline_soon": False},
+            )
+            self.assertEqual(upd.status_code, 200, upd.text)
+            self.assertFalse(upd.json()["app"]["is_offline_soon"])
+            bad = c.put(
+                f"/v1/portal/admin/apps/{aid}", headers=admin_headers(),
+                json={"is_offline_soon": "yes"},
+            )
+            self.assertEqual(bad.status_code, 422)
+
     def test_dangerous_launch_url_rejected(self) -> None:
         for bad in ("javascript:alert(1)", "data:text/html,x", "//evil.com/x", "https://u:p@example.com"):
             with self.subTest(bad=bad):

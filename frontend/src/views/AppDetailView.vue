@@ -98,6 +98,7 @@ function formatTime(iso: string | null): string {
                 <h1 class="text-[26px] font-bold">{{ app.name }}</h1>
                 <t-tag v-if="app.is_new" theme="success" variant="light" size="small">新</t-tag>
                 <t-tag v-if="app.is_featured" theme="primary" variant="light" size="small">推荐</t-tag>
+                <t-tag v-if="app.is_offline_soon" theme="warning" variant="light" size="small">即将下线</t-tag>
               </div>
               <p class="text-ink-2 mt-1">{{ app.subtitle }}</p>
               <div class="flex flex-wrap gap-2 mt-3">

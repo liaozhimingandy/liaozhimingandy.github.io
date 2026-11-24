@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS portal_apps (
     is_featured   BOOLEAN      NOT NULL DEFAULT FALSE,
     show_on_home  BOOLEAN      NOT NULL DEFAULT FALSE,
     is_new        BOOLEAN      NOT NULL DEFAULT FALSE,
+    is_offline_soon BOOLEAN    NOT NULL DEFAULT FALSE,
     sort_order    INTEGER      NOT NULL DEFAULT 0,
     published_at  TIMESTAMPTZ,
     created_by    TEXT,  -- Logto sub；可空，不建 users 表

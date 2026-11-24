@@ -54,6 +54,7 @@ export interface AppForm {
   is_featured: boolean
   show_on_home: boolean
   is_new: boolean
+  is_offline_soon: boolean
   sort_order: number
   categories: string[]
 }

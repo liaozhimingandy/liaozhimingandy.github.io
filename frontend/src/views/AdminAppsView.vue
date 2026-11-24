@@ -33,7 +33,7 @@ const form = ref<AppForm>({
   code: '', name: '', subtitle: '', description: '', detail: '',
   icon_url: '', cover_url: '', launch_url: '', app_type: 'application',
   open_mode: 'new_tab', status: 'draft', visibility: 'public',
-  auth_required: false, is_featured: false, show_on_home: false, is_new: false,
+  auth_required: false, is_featured: false, show_on_home: false, is_new: false, is_offline_soon: false,
   sort_order: 0, categories: [],
 })
 
@@ -80,7 +80,7 @@ function openCreate(): void {
     code: '', name: '', subtitle: '', description: '', detail: '',
     icon_url: '', cover_url: '', launch_url: '', app_type: 'application',
     open_mode: 'new_tab', status: 'draft', visibility: 'public',
-    auth_required: false, is_featured: false, show_on_home: false, is_new: false,
+    auth_required: false, is_featured: false, show_on_home: false, is_new: false, is_offline_soon: false,
     sort_order: 0, categories: [],
   })
   drawerVisible.value = true
@@ -95,7 +95,7 @@ function openEdit(app: PortalApp): void {
     app_type: app.app_type, open_mode: app.open_mode, status: app.status,
     visibility: app.visibility, auth_required: app.auth_required,
     is_featured: app.is_featured, show_on_home: app.show_on_home,
-    is_new: app.is_new, sort_order: app.sort_order,
+    is_new: app.is_new, is_offline_soon: app.is_offline_soon, sort_order: app.sort_order,
     categories: [...app.categories],
   })
   drawerVisible.value = true
@@ -265,6 +265,7 @@ const STATUS_LABEL: Record<string, string> = { draft: '草稿', published: '已�
             <div class="flex items-center gap-2">
               <span class="font-medium">{{ row.name }}</span>
               <t-tag v-if="row.is_new" size="small" theme="success" variant="light">新</t-tag>
+              <t-tag v-if="row.is_offline_soon" size="small" theme="warning" variant="light">即将下线</t-tag>
             </div>
           </template>
           <template #app_type="{ row }">
@@ -430,6 +431,7 @@ const STATUS_LABEL: Record<string, string> = { draft: '草稿', published: '已�
           <t-checkbox v-model="form.is_featured">首页推荐</t-checkbox>
           <t-checkbox v-model="form.show_on_home">首页展示</t-checkbox>
           <t-checkbox v-model="form.is_new">新品标识</t-checkbox>
+          <t-checkbox v-model="form.is_offline_soon">即将下线</t-checkbox>
         </div>
 
         <t-divider />
