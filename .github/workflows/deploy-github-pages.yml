@@ -10,6 +10,9 @@
 #   - Logto 回调/登出回跳 = https://www.alsoapp.com/（与访问域同 origin，不带 fragment，
 #     否则 301 跨 origin 丢 sessionStorage 且未在 Logto 登记）。
 #
+# 生产环境变量一律放 frontend/.env.production（vite build 自动加载），本工作流
+# 不内联任何 VITE_* 具体值，保持通用；改地址只改该文件并提交。敏感值不进前端产物。
+#
 # 触发：push main 且 frontend/** 或本工作流变化；workflow_dispatch 手动。
 # =============================================================================
 name: Deploy AP Frontend to Pages
@@ -52,14 +55,8 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Build（生产默认值内联，可被 vars 覆盖）
+      - name: Build（生产值读 frontend/.env.production）
         working-directory: frontend
-        env:
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://api.alsoapp.com' }}
-          VITE_LOGTO_ENDPOINT: ${{ vars.VITE_LOGTO_ENDPOINT || 'https://account.alsoapp.com' }}
-          # 回调落在站点根（redirect_uri 禁止带 fragment(#)），由 main.ts 挂载前消费 code/state
-          VITE_LOGTO_REDIRECT_URI: ${{ vars.VITE_LOGTO_REDIRECT_URI || 'https://www.alsoapp.com/' }}
-          VITE_LOGTO_POST_LOGOUT_REDIRECT_URI: ${{ vars.VITE_LOGTO_POST_LOGOUT_REDIRECT_URI || 'https://www.alsoapp.com/' }}
         run: npm run build
 
       # history 路由深路径兜底：Pages 对找不到的路径返回 404.html，

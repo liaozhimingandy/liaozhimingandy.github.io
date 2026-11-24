@@ -30,33 +30,37 @@ const PROD_ORIGIN = 'https://www.alsoapp.com'
 const PROD_CALLBACK = 'https://www.alsoapp.com/'
 const PROD_API = 'https://api.alsoapp.com'
 
-test('Pages 工作流生产回调与登出回跳必须是自定义域（与访问域同 origin）', () => {
-  const wf = read('.github/workflows/deploy-github-pages.yml')
-  // 校验步骤 + 构建 env 各两处，合计 4 处默认值
-  const hits = wf.match(/https:\/\/www\.alsoapp\.com\//g) ?? []
-  assert.ok(hits.length >= 4, `生产回调默认值出现 ${hits.length} 次，应至少 4 次`)
+test('.env.production 生产回调与登出回跳必须是自定义域（与访问域同 origin）', () => {
+  const env = read('frontend/.env.production')
+  // 回调 + 登出回跳两处
+  const hits = env.match(/^VITE_LOGTO_(?:POST_LOGOUT_)?REDIRECT_URI=https:\/\/www\.alsoapp\.com\/$/gm) ?? []
+  assert.ok(hits.length >= 2, `生产回调配置出现 ${hits.length} 行，应至少 2 行`)
   assert.equal(PROD_CALLBACK.includes('#'), false, 'OAuth redirect_uri 不能带 fragment')
-  assert.doesNotMatch(
-    wf,
-    /https:\/\/liaozhimingandy\.github\.io\//,
-    '不能再用 Pages 源站作为生产回调：它会 301 到自定义域，恢复意图按 origin 隔离会丢',
-  )
-  assert.doesNotMatch(
-    wf,
-    /www\.alsoapp\.com\/tools\//,
-    '统一站点已迁移到根路径部署，不应残留 /tools/ 前缀回调',
-  )
+  assert.doesNotMatch(env, /https:\/\/liaozhimingandy\.github\.io\//, '不能再用 Pages 源站作为生产回调')
+  assert.doesNotMatch(env, /www\.alsoapp\.com\/tools\//, '不应残留 /tools/ 前缀回调')
 })
 
-test('生产地址全 HTTPS：API 根 / Logto endpoint / 回调 / 登出', () => {
-  const wf = read('.github/workflows/deploy-github-pages.yml')
-  assert.match(wf, /\$\{\{ vars\.VITE_API_BASE_URL \|\| 'https:\/\/api\.alsoapp\.com' \}\}/)
-  assert.match(wf, /VITE_API_BASE_URL:.*https:\/\/api\.alsoapp\.com/)
-  assert.match(wf, /VITE_LOGTO_ENDPOINT:.*https:\/\/account\.alsoapp\.com/)
-  assert.match(wf, /VITE_LOGTO_REDIRECT_URI:.*https:\/\/www\.alsoapp\.com\//)
-  assert.match(wf, /VITE_LOGTO_POST_LOGOUT_REDIRECT_URI:.*https:\/\/www\.alsoapp\.com\//)
+test('生产地址全 HTTPS：API 根 / Logto endpoint / 回调 / 登出均在 .env.production', () => {
+  const env = read('frontend/.env.production')
+  assert.match(env, /^VITE_API_BASE_URL=https:\/\/api\.alsoapp\.com$/m)
+  assert.match(env, /^VITE_LOGTO_ENDPOINT=https:\/\/account\.alsoapp\.com$/m)
+  assert.match(env, /^VITE_LOGTO_REDIRECT_URI=https:\/\/www\.alsoapp\.com\/$/m)
+  assert.match(env, /^VITE_LOGTO_POST_LOGOUT_REDIRECT_URI=https:\/\/www\.alsoapp\.com\/$/m)
   assert.equal(PROD_API.startsWith('https://'), true)
   assert.equal(PROD_ORIGIN.startsWith('https://'), true)
+})
+
+test('部署工作流保持通用：不内联任何 VITE_* 具体值，也不泄露本地开发身份', () => {
+  // 只看实际配置行，忽略注释中的说明文字
+  const wf = read('.github/workflows/deploy-github-pages.yml')
+    .split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n')
+  assert.doesNotMatch(wf, /VITE_[A-Z0-9_]+\s*:/, '工作流不应再定义 VITE_* 环境变量')
+  assert.doesNotMatch(wf, /vars\.VITE_/, '工作流不应再通过 vars 覆盖前端变量')
+  assert.doesNotMatch(wf, /VITE_DEV_USER_SUB/, '工作流不得注入本地联调身份')
+  // .env.production 里同样只允许注释提及，不得有实际赋值
+  const prod = read('frontend/.env.production')
+    .split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n')
+  assert.doesNotMatch(prod, /VITE_DEV_USER_SUB\s*=/, '生产构建不得注入本地联调身份')
 })
 
 test('后端 CORS 白名单填前端 origin，不是后端域名', () => {
