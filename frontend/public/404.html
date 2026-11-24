@@ -1,20 +1,14 @@
 <!DOCTYPE html>
+<!--
+  占位文件：真正部署的 404.html 由 scripts/spa-fallback.mjs 在构建后生成，
+  内容直接等于 index.html（history 路由：深路径由 vue-router 按当前 URL 渲染）。
+
+  不要在这里写 sessionStorage 跳转逻辑：
+    1. CDN 缓存旧 index.html 时，跳回首页再恢复的机制会失效（/admin/apps/ 跳首页）；
+    2. /tools/* 前缀走另一条 CDN 回源规则，根本拿不到本站的 404.html（原生 404）。
+  物理深路径入口 + 404.html=index.html 才是对 GitHub Pages 可靠的方式。
+-->
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <!--
-      GitHub Pages SPA 兜底页：history 模式刷新 /wedesk/ 等路径时 Pages 找不到
-      对应文件会返回本页。这里把原始路径暂存 sessionStorage 后回到首页，
-      由 main.ts 挂载后 router.replace 恢复原路径（后端托管形态 spa_fallback
-      直接返回 index.html，不经过本页）。
-    -->
-    <script>
-      try {
-        sessionStorage.setItem('ap-404-path', location.pathname + location.search + location.hash)
-      } catch (e) { /* 隐私模式忽略 */ }
-      location.replace('/')
-    </script>
-    <title>Also Apps</title>
-  </head>
+  <head><meta charset="UTF-8" /><title>Also Apps</title></head>
   <body>页面跳转中…</body>
 </html>
