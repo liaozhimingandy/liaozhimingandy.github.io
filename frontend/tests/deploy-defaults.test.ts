@@ -50,13 +50,22 @@ test('生产地址全 HTTPS：API 根 / Logto endpoint / 回调 / 登出均在 .
   assert.equal(PROD_ORIGIN.startsWith('https://'), true)
 })
 
-test('部署工作流保持通用：不内联任何 VITE_* 具体值，也不泄露本地开发身份', () => {
+test('部署工作流：VITE_* 只透传 vars 不写死具体值，空值回退且无本地身份泄漏', () => {
   // 只看实际配置行，忽略注释中的说明文字
   const wf = read('.github/workflows/deploy-github-pages.yml')
     .split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n')
-  assert.doesNotMatch(wf, /VITE_[A-Z0-9_]+\s*:/, '工作流不应再定义 VITE_* 环境变量')
-  assert.doesNotMatch(wf, /vars\.VITE_/, '工作流不应再通过 vars 覆盖前端变量')
+
+  // 每个 VITE_* 配置行的值必须恰为 ${{ vars.VITE_<同名> }}，不得内联地址或 || 默认值
+  const assignments = [...wf.matchAll(/^\s+(VITE_[A-Z0-9_]+):\s*(.+?)\s*$/gm)]
+  assert.ok(assignments.length >= 5, `工作流应透传至少 5 个 VITE_*，实际 ${assignments.length}`)
+  for (const [, key, value] of assignments) {
+    assert.equal(value, `\${{ vars.${key} }}`, `${key} 只能透传 vars，不得写死默认值`)
+  }
+  assert.doesNotMatch(wf, /\|\|\s*['"]https?:/, '不得用 || 内联具体地址作默认值')
   assert.doesNotMatch(wf, /VITE_DEV_USER_SUB/, '工作流不得注入本地联调身份')
+  // vars 未设置会注入空串并盖掉 .env.production，必须有空值回退逻辑
+  assert.match(wf, /-z .*printenv .*unset/, '缺少 vars 空值回退，会盖掉 .env.production 默认值')
+
   // .env.production 里同样只允许注释提及，不得有实际赋值
   const prod = read('frontend/.env.production')
     .split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n')

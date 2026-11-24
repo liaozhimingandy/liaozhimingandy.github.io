@@ -10,8 +10,11 @@
 #   - Logto 回调/登出回跳 = https://www.alsoapp.com/（与访问域同 origin，不带 fragment，
 #     否则 301 跨 origin 丢 sessionStorage 且未在 Logto 登记）。
 #
-# 生产环境变量一律放 frontend/.env.production（vite build 自动加载），本工作流
-# 不内联任何 VITE_* 具体值，保持通用；改地址只改该文件并提交。敏感值不进前端产物。
+# 生产环境变量默认值放 frontend/.env.production（vite build 自动加载），保证仓库
+# 开箱即用；本工作流只透传 GitHub Actions Variables（vars.VITE_*）、不内联具体值，
+# 既保持通用又保留控制台覆盖能力（Settings → Variables 改值后重新部署即生效）。
+# 注意：vars 未设置时 GitHub 注入空串会盖掉 .env.production，故 Build 步骤会先
+# 剔除空值变量，让 Vite 回退到文件默认值。敏感值不进前端产物。
 #
 # 触发：push main 且 frontend/** 或本工作流变化；workflow_dispatch 手动。
 # =============================================================================
@@ -55,9 +58,22 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Build（生产值读 frontend/.env.production）
+      # 默认值读 frontend/.env.production；vars.VITE_* 若配置则覆盖（空值不算配置）。
+      - name: Build（.env.production 默认值，vars 可覆盖）
         working-directory: frontend
-        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_LOGTO_ENDPOINT: ${{ vars.VITE_LOGTO_ENDPOINT }}
+          VITE_LOGTO_APP_ID: ${{ vars.VITE_LOGTO_APP_ID }}
+          VITE_LOGTO_REDIRECT_URI: ${{ vars.VITE_LOGTO_REDIRECT_URI }}
+          VITE_LOGTO_POST_LOGOUT_REDIRECT_URI: ${{ vars.VITE_LOGTO_POST_LOGOUT_REDIRECT_URI }}
+        run: |
+          # GitHub 未设置的 vars 会注入空串，Vite 视其为已定义从而盖掉 .env.production；
+          # 这里剔除空值，让 Vite 回退文件默认值（非空值则保留为覆盖）。
+          for k in VITE_API_BASE_URL VITE_LOGTO_ENDPOINT VITE_LOGTO_APP_ID VITE_LOGTO_REDIRECT_URI VITE_LOGTO_POST_LOGOUT_REDIRECT_URI; do
+            if [ -z "$(printenv "$k")" ]; then unset "$k"; fi
+          done
+          npm run build
 
       # history 路由深路径兜底：Pages 对找不到的路径返回 404.html，
       # 内容直接等于 index.html，由 vue-router 按当前 URL 渲染对应页面。
