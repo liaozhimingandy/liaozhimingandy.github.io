@@ -18,6 +18,7 @@ from .portal_models import (
     VISIBILITIES,
     AppRecord,
     CategoryRecord,
+    with_updated,
 )
 from .portal_store import PortalRepository, validate_launch_url
 
@@ -100,7 +101,12 @@ def admin_create_app(
         raise _api_error(422, "VALIDATION_ERROR", "categories 必须是字符串数组")
     payload = _app_payload({k: v for k, v in body.items() if k != "categories"})
     payload.setdefault("name", code)
-    app = AppRecord(code=code, **payload)
+    # PG 有约束 ck_portal_apps_published：status=published 必须有 published_at。
+    # 经 with_updated 统一填发布时间与责任人，不能裸构造 AppRecord 直接 INSERT。
+    app = with_updated(
+        AppRecord(code=code, **payload),
+        created_by=admin.sub, updated_by=admin.sub,
+    )
     try:
         created = repo.create_app(app, tuple(categories))
     except Exception as exc:

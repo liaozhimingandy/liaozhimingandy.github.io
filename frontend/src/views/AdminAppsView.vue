@@ -36,6 +36,15 @@ const form = ref<AppForm>({
   sort_order: 0, categories: [],
 })
 
+// 卡片预览的图标链接：加载失败时只让「当前这个链接」回退到首字母，
+// 用户改了链接会自动重试，不会被上一次的失败状态粘住。
+const previewIcon = computed(() => form.value.icon_url?.trim() ?? '')
+const iconFailedUrl = ref('')
+const showPreviewIcon = computed(() => !!previewIcon.value && iconFailedUrl.value !== previewIcon.value)
+function onPreviewIconError(): void {
+  iconFailedUrl.value = previewIcon.value
+}
+
 const filteredApps = computed(() => apps.value.filter((a) => {
   const q = keyword.value.trim().toLowerCase()
   if (q && !`${a.name} ${a.code} ${a.subtitle}`.toLowerCase().includes(q)) return false
@@ -442,8 +451,15 @@ const STATUS_LABEL: Record<string, string> = { draft: '草稿', published: '已�
         <div class="text-[13px] font-semibold text-ink-2 mb-2">卡片预览</div>
         <div class="rounded-lg border border-line p-3 bg-canvas">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-brand-soft text-brand flex items-center justify-center font-bold shrink-0">
-              {{ (form.name || 'A').charAt(0).toUpperCase() }}
+            <div class="w-10 h-10 rounded-xl bg-brand-soft text-brand flex items-center justify-center font-bold shrink-0 overflow-hidden">
+              <img
+                v-if="showPreviewIcon"
+                :src="previewIcon"
+                :alt="form.name"
+                class="w-full h-full object-cover"
+                @error="onPreviewIconError"
+              />
+              <template v-else>{{ (form.name || 'A').charAt(0).toUpperCase() }}</template>
             </div>
             <div class="min-w-0">
               <div class="font-semibold truncate">{{ form.name || '应用名称' }}</div>

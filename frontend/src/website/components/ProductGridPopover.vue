@@ -20,12 +20,16 @@ interface GridItem {
   /** 本站相对路径且 same_tab 时走 SPA 路由，其余新标签打开 */
   sameTab?: boolean
   color: string
+  /** 应用图标链接；为空或加载失败时回退首字母徽标 */
+  iconUrl?: string
 }
 
 const router = useRouter()
 const visible = ref(false)
 const apps = ref<PortalApp[]>([])
 const failed = ref(false)
+/** 加载失败的图标链接——按 URL 记录，换链接会自动重试，不会被旧失败状态粘住 */
+const failedIcons = ref<string[]>([])
 
 /** API 不可用时的静态兜底（全是本站路由，保证弹窗永远有内容） */
 const FALLBACK: GridItem[] = [
@@ -53,11 +57,22 @@ const items = computed<GridItem[]>(() => {
     url: app.launch_url || undefined,
     sameTab: app.open_mode === 'same_tab',
     color: COLORS[i % COLORS.length],
+    iconUrl: app.icon_url?.trim() || undefined,
   }))
 })
 
 function badgeText(name: string): string {
   return name.trim().charAt(0).toUpperCase()
+}
+
+function showIcon(item: GridItem): boolean {
+  return !!item.iconUrl && !failedIcons.value.includes(item.iconUrl)
+}
+
+function onIconError(item: GridItem): void {
+  if (item.iconUrl && !failedIcons.value.includes(item.iconUrl)) {
+    failedIcons.value.push(item.iconUrl)
+  }
 }
 
 function open(item: GridItem): void {
@@ -100,8 +115,17 @@ function open(item: GridItem): void {
           >
             <span
               class="grid-badge"
-              :style="{ background: item.color }"
-            >{{ badgeText(item.name) }}</span>
+              :style="showIcon(item) ? undefined : { background: item.color }"
+            >
+              <img
+                v-if="showIcon(item)"
+                :src="item.iconUrl"
+                :alt="item.name"
+                class="grid-badge-img"
+                @error="onIconError(item)"
+              />
+              <template v-else>{{ badgeText(item.name) }}</template>
+            </span>
             <span class="grid-name">{{ item.name }}</span>
           </button>
         </div>
@@ -122,23 +146,26 @@ function open(item: GridItem): void {
   color: #5f6368;
 }
 .grid-panel {
-  width: 320px;
+  width: auto;
+  min-width: 216px;
   background: #fff;
   border-radius: 12px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.16);
-  padding: 16px 12px 10px;
+  padding: 12px 8px 8px;
 }
 .grid-items {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  /* 固定列宽贴合图标，避免 320px 宽面板里 3 列各占 ~93px 造成左右大片留白 */
+  grid-template-columns: repeat(3, 64px);
+  justify-content: center;
+  gap: 4px;
 }
 .grid-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 14px 6px;
+  gap: 6px;
+  padding: 10px 2px;
   border: 0;
   background: transparent;
   border-radius: 10px;
@@ -148,16 +175,22 @@ function open(item: GridItem): void {
   background: #f0f7fe;
 }
 .grid-badge {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   color: #fff;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   user-select: none;
+  overflow: hidden;
+}
+.grid-badge-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .grid-name {
   font-size: 12px;
@@ -167,8 +200,8 @@ function open(item: GridItem): void {
 }
 .grid-more {
   border-top: 1px solid #e5e8ed;
-  margin-top: 12px;
-  padding: 12px 0 4px;
+  margin-top: 8px;
+  padding: 8px 0 2px;
   text-align: center;
 }
 </style>
@@ -180,10 +213,12 @@ function open(item: GridItem): void {
 -->
 <style>
 .grid-popup-inner.t-popup__content {
-  padding: 0;
-  background: transparent;
-  border: 0;
-  box-shadow: none;
-  border-radius: 0;
+  /* TDesign 的方向选择器（.t-popup[data-popper-placement] .t-popup__content）优先级更高，
+     这里用 !important 确保「弹窗里再套一张卡片」的白底/内边距/边框被彻底清除。 */
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }
 </style>

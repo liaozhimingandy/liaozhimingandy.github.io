@@ -17,7 +17,7 @@ VALUES
     ('SAFEKEEP', '锦囊 SafeKeep', '零知识在线密码保险库',
      '浏览器端 AES-256-GCM 加密，主密码与恢复码双钥匙解锁，服务端只保存密文。',
      '锦囊 SafeKeep：零知识在线密码保险库。数据在浏览器端加密后才上传，服务端只保存密文，主密码与恢复码双钥匙解锁。',
-     '', '', '/safekeep/',
+     '/static/icons/safekeep.svg', '', '/safekeep/',
      'tool', 'new_tab', 'published', 'public', FALSE, TRUE, FALSE, FALSE, 5, now())
 ON CONFLICT (code) DO NOTHING;
 

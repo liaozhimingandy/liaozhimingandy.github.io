@@ -7,13 +7,13 @@ const year = new Date().getFullYear()
   <footer class="footer">
     <div class="mx-auto max-w-6xl px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
       <div class="flex flex-wrap items-center justify-center gap-4 text-[12px]">
-        <router-link :to="{ name: 'home' }" class="text-ink-3 hover:text-brand no-underline">关于 Also</router-link>
+        <router-link :to="{ name: 'home' }" class="text-ink-3 hover:text-brand no-underline">关于 Alsoapp</router-link>
         <a href="mailto:contact@alsoapp.com" class="text-ink-3 hover:text-brand no-underline">联系我们</a>
         <router-link :to="{ name: 'privacy' }" class="text-ink-3 hover:text-brand no-underline">隐私政策</router-link>
         <router-link :to="{ name: 'terms' }" class="text-ink-3 hover:text-brand no-underline">服务条款</router-link>
         <router-link :to="{ name: 'apps' }" class="text-ink-3 hover:text-brand no-underline">应用中心</router-link>
       </div>
-      <div class="text-[12px] text-ink-3">© {{ year }} Also Apps · All rights reserved.</div>
+      <div class="text-[12px] text-ink-3">© {{ year }} AlsoApps · All rights reserved.</div>
     </div>
   </footer>
 </template>

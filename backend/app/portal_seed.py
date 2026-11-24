@@ -28,6 +28,7 @@ def _app(
     *,
     app_type: str = "application",
     categories: tuple[str, ...] = (),
+    icon_url: str = "",
     launch_url: str = "",
     status: str = "draft",
     published: bool = False,
@@ -43,6 +44,7 @@ def _app(
         subtitle=subtitle,
         description=description,
         detail=description,
+        icon_url=icon_url,
         launch_url=launch_url,
         app_type=app_type,  # type: ignore[arg-type]
         status=status,  # type: ignore[arg-type]
@@ -62,6 +64,7 @@ DEFAULT_APPS: tuple[AppRecord, ...] = (
         "SAFEKEEP", "锦囊 SafeKeep", "零知识在线密码保险库",
         "浏览器端 AES-256-GCM 加密，主密码与恢复码双钥匙解锁，服务端只保存密文。",
         app_type="tool", categories=("productivity", "other"),
+        icon_url="/static/icons/safekeep.svg",
         launch_url="/safekeep/",
         status="published", published=True, featured=True, sort_order=5,
     ),

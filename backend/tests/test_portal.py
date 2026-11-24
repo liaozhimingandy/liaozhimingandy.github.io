@@ -231,6 +231,25 @@ class TestAdmin(PortalApiTestBase):
 
             self.assertEqual(c.delete(f"/v1/portal/admin/apps/{app_id}", headers=h).status_code, 200)
 
+    def test_create_published_app_sets_published_at(self) -> None:
+        """PG 约束 ck_portal_apps_published 要求发布态必须有 published_at。
+
+        创建接口必须经 with_updated 统一补时间，不能裸构造 AppRecord 直接 INSERT，
+        否则本地内存库测试通过、线上 PG 报 500。
+        """
+        with self.client() as c:
+            res = c.post(
+                "/v1/portal/admin/apps", headers=admin_headers(),
+                json={
+                    "code": "PUBNEW", "name": "直发应用", "status": "published",
+                    "launch_url": "https://example.com/pubnew",
+                },
+            )
+            self.assertEqual(res.status_code, 200, res.text)
+            app = res.json()["app"]
+            self.assertEqual(app["status"], "published")
+            self.assertTrue(app["published_at"], "发布态必须自动写入 published_at")
+
     def test_dangerous_launch_url_rejected(self) -> None:
         for bad in ("javascript:alert(1)", "data:text/html,x", "//evil.com/x", "https://u:p@example.com"):
             with self.subTest(bad=bad):

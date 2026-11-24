@@ -51,7 +51,7 @@ function openApp(app: PortalApp): void {
 <template>
   <header class="topbar portal-topbar">
     <router-link :to="{ name: 'home' }" class="brand no-underline">
-      <span class="text-brand">Also</span> Apps
+      <span class="text-brand">AlsoApps</span>
     </router-link>
 
     <t-input

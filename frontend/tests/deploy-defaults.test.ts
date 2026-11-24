@@ -13,6 +13,11 @@
  * 前缀），API 根改为 https://api.alsoapp.com，镜像名 fastapi-ap，后端变量前缀
  * TOOLS_* → AP_*。本测试守住仓库能控制的部分；CDN / DNS / Logto 白名单属于
  * 外部控制台配置，需人工验证。
+ *
+ * 2026-11-24 配置收敛：同一份 VITE_* 曾同时写在 .env.production、GitHub Variables
+ * 和代码默认值三处，改一处漏两处。现收敛为：生产文件显式声明必须项（API 根 +
+ * Logto endpoint/appId），src/config.ts 的同值默认值仅作兜底，回调由 origin 推导；
+ * 工作流不注入任何 VITE_*。
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -30,46 +35,47 @@ const PROD_ORIGIN = 'https://www.alsoapp.com'
 const PROD_CALLBACK = 'https://www.alsoapp.com/'
 const PROD_API = 'https://api.alsoapp.com'
 
-test('.env.production 生产回调与登出回跳必须是自定义域（与访问域同 origin）', () => {
+test('.env.production 显式声明必须项，可推导项不重复配置', () => {
   const env = read('frontend/.env.production')
-  // 回调 + 登出回跳两处
-  const hits = env.match(/^VITE_LOGTO_(?:POST_LOGOUT_)?REDIRECT_URI=https:\/\/www\.alsoapp\.com\/$/gm) ?? []
-  assert.ok(hits.length >= 2, `生产回调配置出现 ${hits.length} 行，应至少 2 行`)
+  const active = env.split('\n')
+    .filter((l) => l.trim() && !l.trimStart().startsWith('#'))
+    .map((l) => l.trim())
+    .sort()
+  assert.deepEqual(active, [
+    `VITE_API_BASE_URL=${PROD_API}`,
+    'VITE_LOGTO_ENDPOINT=https://account.alsoapp.com',
+    'VITE_LOGTO_APP_ID=plu65e7c0nypndqg7s4hp',
+  ].sort(), '必须项缺失或出现多余配置')
+  assert.doesNotMatch(env, /VITE_DEV_USER_SUB\s*=/, '生产构建不得注入本地联调身份')
+  assert.doesNotMatch(env, /VITE_LOGTO_(?:POST_LOGOUT_)?REDIRECT_URI\s*=/, '回调由 origin 推导，不写死域名')
+  assert.doesNotMatch(env, /https:\/\/liaozhimingandy\.github\.io\//, '不能再用 Pages 源站')
+  assert.doesNotMatch(env, /www\.alsoapp\.com\/tools\//, '不应残留 /tools/ 前缀')
   assert.equal(PROD_CALLBACK.includes('#'), false, 'OAuth redirect_uri 不能带 fragment')
-  assert.doesNotMatch(env, /https:\/\/liaozhimingandy\.github\.io\//, '不能再用 Pages 源站作为生产回调')
-  assert.doesNotMatch(env, /www\.alsoapp\.com\/tools\//, '不应残留 /tools/ 前缀回调')
 })
 
-test('生产地址全 HTTPS：API 根 / Logto endpoint / 回调 / 登出均在 .env.production', () => {
+test('必须项在 env 与代码默认两处保持一致，回调仍由 origin 推导', () => {
   const env = read('frontend/.env.production')
   assert.match(env, /^VITE_API_BASE_URL=https:\/\/api\.alsoapp\.com$/m)
   assert.match(env, /^VITE_LOGTO_ENDPOINT=https:\/\/account\.alsoapp\.com$/m)
-  assert.match(env, /^VITE_LOGTO_REDIRECT_URI=https:\/\/www\.alsoapp\.com\/$/m)
-  assert.match(env, /^VITE_LOGTO_POST_LOGOUT_REDIRECT_URI=https:\/\/www\.alsoapp\.com\/$/m)
+  assert.match(env, /^VITE_LOGTO_APP_ID=plu65e7c0nypndqg7s4hp$/m)
+  const config = read('frontend/src/config.ts')
+  assert.match(config, /DEFAULT_LOGTO_ENDPOINT\s*=\s*'https:\/\/account\.alsoapp\.com'/)
+  assert.match(config, /DEFAULT_LOGTO_APP_ID\s*=\s*'plu65e7c0nypndqg7s4hp'/)
+  // 根路径部署时 new URL(BASE_URL, origin) => https://www.alsoapp.com/
+  assert.match(config, /new URL\(publicBase, origin\)/)
   assert.equal(PROD_API.startsWith('https://'), true)
   assert.equal(PROD_ORIGIN.startsWith('https://'), true)
 })
 
-test('部署工作流：VITE_* 只透传 vars 不写死具体值，空值回退且无本地身份泄漏', () => {
+test('部署工作流不注入任何 VITE_*，构建只读 .env.production', () => {
   // 只看实际配置行，忽略注释中的说明文字
   const wf = read('.github/workflows/deploy-github-pages.yml')
     .split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n')
 
-  // 每个 VITE_* 配置行的值必须恰为 ${{ vars.VITE_<同名> }}，不得内联地址或 || 默认值
-  const assignments = [...wf.matchAll(/^\s+(VITE_[A-Z0-9_]+):\s*(.+?)\s*$/gm)]
-  assert.ok(assignments.length >= 5, `工作流应透传至少 5 个 VITE_*，实际 ${assignments.length}`)
-  for (const [, key, value] of assignments) {
-    assert.equal(value, `\${{ vars.${key} }}`, `${key} 只能透传 vars，不得写死默认值`)
-  }
-  assert.doesNotMatch(wf, /\|\|\s*['"]https?:/, '不得用 || 内联具体地址作默认值')
-  assert.doesNotMatch(wf, /VITE_DEV_USER_SUB/, '工作流不得注入本地联调身份')
-  // vars 未设置会注入空串并盖掉 .env.production，必须有空值回退逻辑
-  assert.match(wf, /-z .*printenv .*unset/, '缺少 vars 空值回退，会盖掉 .env.production 默认值')
-
-  // .env.production 里同样只允许注释提及，不得有实际赋值
-  const prod = read('frontend/.env.production')
-    .split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n')
-  assert.doesNotMatch(prod, /VITE_DEV_USER_SUB\s*=/, '生产构建不得注入本地联调身份')
+  assert.doesNotMatch(wf, /VITE_[A-Z0-9_]+/, '工作流不得出现 VITE_*（含 vars 透传与 env 块）')
+  assert.doesNotMatch(wf, /\|\|\s*['"]https?:/, '不得内联具体地址作默认值')
+  assert.doesNotMatch(wf, /printenv/, '不再需要 vars 空值回退逻辑')
+  assert.match(wf, /run: npm run build/)
 })
 
 test('后端 CORS 白名单填前端 origin，不是后端域名', () => {

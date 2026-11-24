@@ -131,7 +131,7 @@ function clearFilters(): void {
     <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
       <div>
         <h1 class="text-[26px] font-bold">应用中心</h1>
-        <p class="text-[13.5px] text-ink-3 mt-1.5">发现 Also 生态的全部应用与工具</p>
+        <p class="text-[13.5px] text-ink-3 mt-1.5">发现 Alsoapp 生态的全部应用与工具</p>
       </div>
       <t-input v-model="keyword" class="w-[300px]" placeholder="搜索名称、编码或功能" clearable>
         <template #prefix-icon><SearchIcon /></template>
