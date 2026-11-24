@@ -7,13 +7,13 @@
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { SearchIcon } from 'tdesign-icons-vue-next'
+import { SearchIcon, SettingIcon } from 'tdesign-icons-vue-next'
 import PortalHeader from '@/components/PortalHeader.vue'
 import AppListItem from '@/components/AppListItem.vue'
 import AppSkeleton from '@/components/AppSkeleton.vue'
 import CopyRight from '@/components/CopyRight.vue'
 import { usePortalStore } from '@/services/portal/store.ts'
-import { searchApps, type PortalApp } from '@/services/portal/api.ts'
+import { getMyCapabilities, searchApps, type PortalApp } from '@/services/portal/api.ts'
 import { isAuthenticated } from '@/services/auth/logto.ts'
 
 const route = useRoute()
@@ -26,6 +26,7 @@ const view = ref<'all' | 'favorites' | 'recent'>(
   ['all', 'favorites', 'recent'].includes(String(route.query.view)) ? String(route.query.view) as 'all' | 'favorites' | 'recent' : 'all',
 )
 const authenticated = ref(false)
+const canManageApps = ref(false)
 const remoteResults = ref<PortalApp[] | null>(null)
 
 // URL ←→ 状态：改动筛选条件时同步到地址栏，支持分享和刷新
@@ -93,6 +94,10 @@ onMounted(async () => {
   await loadCatalog()
   authenticated.value = await isAuthenticated().catch(() => false)
   if (authenticated.value) await loadUserData(true)
+  // 后端按白名单判定，前端不维护第二份管理员名单；失败一律不显示入口。
+  canManageApps.value = await getMyCapabilities()
+    .then((c) => c.can_manage_apps)
+    .catch(() => false)
 })
 
 // 关键词搜索走后端接口（覆盖 code 等前端缓存可能不含的字段）
@@ -134,9 +139,24 @@ function clearFilters(): void {
         <h1 class="text-[26px] font-bold">应用中心</h1>
         <p class="text-[13.5px] text-ink-3 mt-1.5">发现 Alsoapp 生态的全部应用与工具</p>
       </div>
-      <t-input v-model="keyword" class="w-[300px]" placeholder="搜索名称、编码或功能" clearable>
-        <template #prefix-icon><SearchIcon /></template>
-      </t-input>
+      <div class="flex items-center gap-3">
+        <!-- 仅后端确认的管理员可见；链接指向真实维护页，不是权限判断本身 -->
+        <t-tooltip
+          v-if="canManageApps"
+          content="仅管理员可见：维护应用信息、分类与首页展示"
+          placement="bottom"
+        >
+          <router-link :to="{ name: 'admin-apps' }">
+            <t-button theme="primary" variant="outline" size="small">
+              <template #icon><SettingIcon /></template>
+              后台维护
+            </t-button>
+          </router-link>
+        </t-tooltip>
+        <t-input v-model="keyword" class="w-[300px]" placeholder="搜索名称、编码或功能" clearable>
+          <template #prefix-icon><SearchIcon /></template>
+        </t-input>
+      </div>
     </div>
 
     <t-tabs v-model="view" class="view-tabs">

@@ -110,3 +110,27 @@ test('构建后 cp index.html 为 404.html（history 深路径兜底，源码不
   const pkg = JSON.parse(read('frontend/package.json'))
   assert.doesNotMatch(pkg.scripts.build, /spa-fallback/)
 })
+
+test('前端工作流按实际 diff 跳过：未改 frontend/** 不构建不部署', () => {
+  const wf = read('.github/workflows/deploy-github-pages.yml')
+  assert.match(wf, /^\s+changes:\n/m, '缺少 changes 作业')
+  assert.match(wf, /frontend: \$\{\{ steps\.check\.outputs\.frontend \}\}/, 'changes 需输出 frontend 判定')
+  assert.match(wf, /git diff --name-only/, '必须用真实 diff 而非只看触发路径')
+  assert.match(wf, /grep -q '\^frontend\/'/, '判定前缀必须是 frontend/')
+  assert.match(wf, /needs: changes\n\s+if: needs\.changes\.outputs\.frontend == 'true'/, 'build 必须被门禁')
+  assert.match(wf, /needs: \[changes, build\]\n\s+if: needs\.changes\.outputs\.frontend == 'true'/, 'deploy 必须被门禁')
+  assert.match(wf, /\[ "\$\{EVENT_NAME\}" = "workflow_dispatch" \]/, '手动触发需绕过 diff 门禁，便于验证工作流')
+})
+
+test('后端镜像工作流按实际 diff 跳过：未改 backend/** 不构建不推镜像', () => {
+  const wf = read('.github/workflows/build-images.yml')
+  assert.match(wf, /^\s+changes:\n/m, '缺少 changes 作业')
+  assert.match(wf, /backend: \$\{\{ steps\.check\.outputs\.backend \}\}/, 'changes 需输出 backend 判定')
+  assert.match(wf, /git diff --name-only/, '必须用真实 diff 而非只看触发路径')
+  assert.match(wf, /grep -q '\^backend\/'/, '判定前缀必须是 backend/')
+  assert.match(wf, /meta:\n(?:\s+.*\n){0,4}\s+needs: changes\n\s+if: needs\.changes\.outputs\.backend == 'true'/, 'meta 必须被门禁')
+  assert.match(wf, /needs: \[changes, meta\]\n\s+if: needs\.changes\.outputs\.backend == 'true'/, 'build 必须被门禁')
+  assert.match(wf, /needs: \[changes, meta, build\]\n\s+if: needs\.changes\.outputs\.backend == 'true'/, 'verify 必须被门禁')
+  assert.match(wf, /if: always\(\) && needs\.changes\.outputs\.backend == 'true'/, '无后端变更时报告也不该刷屏')
+  assert.match(wf, /\[ "\$\{EVENT_NAME\}" = "workflow_dispatch" \]/, '手动触发需绕过 diff 门禁，便于验证工作流')
+})

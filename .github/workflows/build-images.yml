@@ -11,8 +11,9 @@
 #   - 版本号唯一来源是 backend/app/config.py 的 APP_VERSION，不再依赖 VERSION 文件。
 #
 # 触发：
-#   push main 且 backend/** 或本工作流变化 → dev / sha-xxxxxxx / latest / 0.4.0
-#   workflow_dispatch → 可覆盖版本标签、平台、是否推送
+#   push main 且 backend/** 或本工作流变化 → 再由 changes 作业用 git diff 复核；
+#     backend 无实际变化则跳过 meta/build/verify/report，不推镜像。
+#   workflow_dispatch → 手动触发始终构建（用于验证工作流改动），可覆盖版本/平台/推送；
 #
 # 凭据：
 #   GHCR         —— 用 GITHUB_TOKEN + permissions.packages=write，零配置，必定推送。
@@ -68,10 +69,62 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # 0) 先用真实 diff 复核后端是否变化。路径过滤只决定「是否触发工作流」，
+  #    这里决定「是否真的构建」。只改工作流自身时不会白白推一次镜像。
+  # ---------------------------------------------------------------------------
+  changes:
+    name: 检测后端变更
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      backend: ${{ steps.check.outputs.backend }}
+    steps:
+      - name: 检出代码（含历史，用于 git diff）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 判断 backend/** 是否有变更
+        id: check
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "手动触发：执行后端镜像构建" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # push 事件：比对本次推送的起止 commit；新分支/强推导致 before 不可用时
+          # 退化为只看当前 commit，避免 git diff 失败拖垮工作流。
+          if [ -n "${BEFORE:-}" ] \
+            && [ "${BEFORE}" != "0000000000000000000000000000000000000000" ] \
+            && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            FILES="$(git diff --name-only "$BEFORE" "$GITHUB_SHA")"
+          else
+            FILES="$(git show --pretty=format: --name-only "$GITHUB_SHA")"
+          fi
+
+          if grep -q '^backend/' <<< "$FILES"; then
+            COUNT="$(grep -c '^backend/' <<< "$FILES" || true)"
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "检测到 ${COUNT} 个 backend/** 文件变更：执行后端镜像构建" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "backend=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=跳过后端镜像构建::本次提交未修改 backend/**"
+            echo "未检测到 backend/** 变更：跳过构建与推送" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # ---------------------------------------------------------------------------
   # 1) 版本、平台、凭据可用性（唯一决策点；outputs 不含任何 secret 值）
   # ---------------------------------------------------------------------------
   meta:
     name: 计算版本与凭据
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 6
     outputs:
@@ -196,7 +249,8 @@ jobs:
   # ---------------------------------------------------------------------------
   build:
     name: 构建并推送
-    needs: meta
+    needs: [changes, meta]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -329,8 +383,8 @@ jobs:
   # ---------------------------------------------------------------------------
   verify:
     name: 拉取并冒烟
-    needs: [meta, build]
-    if: needs.meta.outputs.should_push == 'true'
+    needs: [changes, meta, build]
+    if: needs.changes.outputs.backend == 'true' && needs.meta.outputs.should_push == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -376,8 +430,8 @@ jobs:
   # ---------------------------------------------------------------------------
   report:
     name: 构建报告
-    needs: [meta, build, verify]
-    if: always()
+    needs: [changes, meta, build, verify]
+    if: always() && needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

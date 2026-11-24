@@ -8,6 +8,7 @@
   GET    /v1/portal/categories           分类列表
 
 用户功能（身份只来自鉴权 provider）：
+  GET    /v1/portal/me/capabilities     当前身份的门户能力（匿名也返回，供前端决定是否显示管理入口）
   GET    /v1/portal/me/favorites
   POST   /v1/portal/me/favorites/{app_id}
   DELETE /v1/portal/me/favorites/{app_id}
@@ -252,6 +253,25 @@ def check_launch(
         "app": app.to_public(),
         "url": app.launch_url,
         "open_mode": app.open_mode,
+    }
+
+
+# --------------------------------------------------------------------------- # 当前用户能力
+@router.get("/v1/portal/me/capabilities", tags=["portal-user"])
+def my_capabilities(
+    principal: Principal | None = Depends(optional_principal),
+) -> dict[str, Any]:
+    """返回「我自己」的门户能力，匿名也正常返回，便于前端决定是否显示管理入口。
+
+    只回答当前身份是否在管理员白名单里，不下发白名单本身；管理接口仍由
+    require_admin 独立强校验，前端隐藏入口绝不当作权限控制。
+    """
+    admins = config.portal_admin_subs()
+    is_admin = bool(principal and admins and principal.sub in admins)
+    return {
+        "authenticated": principal is not None,
+        "is_admin": is_admin,
+        "can_manage_apps": is_admin,
     }
 
 

@@ -78,3 +78,15 @@ test('initAuth：识别 error + 静默标记后回退交互登录，且只回退
   assert.match(body, /isErrorCallback && wasSilentProbe/, '仅静默探测失败的 error 才回退')
   assert.match(body, /c\.signIn\(\{ redirectUri: cfg\(\)\.redirectUri \}\)/, '回退走交互登录（无 prompt=none）')
 })
+
+test('应用中心后台入口：由后端能力接口决定显示，前端不维护管理员名单', () => {
+  const view = read('frontend/src/views/AppsCenterView.vue')
+  const api = read('frontend/src/services/portal/api.ts')
+  assert.match(api, /\/v1\/portal\/me\/capabilities/, '后端需提供能力查询接口')
+  assert.match(api, /getMyCapabilities\(\): Promise<MyCapabilities>/, '前端需封装能力查询')
+  assert.match(view, /canManageApps\.value = await getMyCapabilities\(\)/, '入口显示必须由接口结果决定')
+  assert.match(view, /\.catch\(\(\) => false\)/, '接口失败时不得显示入口')
+  assert.match(view, /v-if="canManageApps"/, '模板必须门禁')
+  assert.match(view, /name: 'admin-apps'/, '入口必须指向真实后台路由')
+  assert.doesNotMatch(view, /PORTAL_ADMIN_SUBS/, '前端不得重复配置管理员白名单')
+})

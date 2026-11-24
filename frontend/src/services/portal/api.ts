@@ -166,7 +166,18 @@ export function checkLaunch(code: string): Promise<LaunchCheck> {
   return request(`/v1/portal/apps/${encodeURIComponent(code)}/launch`, { method: 'POST' })
 }
 
+export interface MyCapabilities {
+  authenticated: boolean
+  is_admin: boolean
+  can_manage_apps: boolean
+}
+
 // --------------------------------------------------------------------------- 用户功能
+/** 当前身份的门户能力：后端按 PORTAL_ADMIN_SUBS 判定，前端只据此决定是否显示入口。 */
+export function getMyCapabilities(): Promise<MyCapabilities> {
+  return request('/v1/portal/me/capabilities')
+}
+
 export function listFavorites(): Promise<{ items: PortalApp[]; total: number }> {
   return request('/v1/portal/me/favorites')
 }

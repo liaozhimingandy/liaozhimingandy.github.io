@@ -320,6 +320,33 @@ class TestAdmin(PortalApiTestBase):
             self.assertEqual(c.get("/v1/portal/admin/categories", headers=h).json()["total"], 2)
 
 
+class TestMyCapabilities(PortalApiTestBase):
+    def test_capabilities_follow_admin_whitelist(self) -> None:
+        """前端据此决定显示后台入口：匿名/普通用户false，白名单用户true，空白名单fail-closed。"""
+        with self.client() as c:
+            anon = c.get("/v1/portal/me/capabilities")
+            self.assertEqual(anon.status_code, 200)
+            self.assertEqual(anon.json(), {
+                "authenticated": False, "is_admin": False, "can_manage_apps": False,
+            })
+
+            user = c.get("/v1/portal/me/capabilities", headers=user_headers()).json()
+            self.assertEqual(user, {
+                "authenticated": True, "is_admin": False, "can_manage_apps": False,
+            })
+
+            admin = c.get("/v1/portal/me/capabilities", headers=admin_headers()).json()
+            self.assertEqual(admin, {
+                "authenticated": True, "is_admin": True, "can_manage_apps": True,
+            })
+
+        # 白名单为空时即便头部声称是管理员也必须 false（与管理接口 fail-closed 一致）
+        with self.client(admin_config="") as c:
+            fail_closed = c.get("/v1/portal/me/capabilities", headers=admin_headers()).json()
+            self.assertEqual(fail_closed["is_admin"], False)
+            self.assertEqual(fail_closed["can_manage_apps"], False)
+
+
 class TestDomainHelpers(unittest.TestCase):
     def test_uuid7_is_time_ordered_and_version_7(self) -> None:
         ids = [uuid7() for _ in range(20)]
