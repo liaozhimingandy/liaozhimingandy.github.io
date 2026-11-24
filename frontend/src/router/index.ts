@@ -36,7 +36,7 @@ const routes: RouteRecordRaw[] = [
     path: '/apps-home/',
     name: 'apps-home',
     component: () => import('@/views/AppsHomeView.vue'),
-    meta: { title: 'Also Apps' },
+    meta: { title: 'alsoapp' },
   },
   {
     path: '/products/',
@@ -155,9 +155,9 @@ router.beforeEach((to) => {
 })
 
 router.afterEach((to) => {
-  const title = (to.meta.title as string | undefined) ?? 'Also Apps'
-  // 官网页面保持旧后缀「- alsoapp」，门户页面用「· Also Apps」
-  document.title = to.meta.website ? `${title} - alsoapp` : `${title} · Also Apps`
+  const title = (to.meta.title as string | undefined) ?? 'alsoapp'
+  // 官网页面保持后缀「- alsoapp」，门户页面用「· alsoapp」
+  document.title = to.meta.website ? `${title} - alsoapp` : `${title} · alsoapp`
 })
 
 export default router

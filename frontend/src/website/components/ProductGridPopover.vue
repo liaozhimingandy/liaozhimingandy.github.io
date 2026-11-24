@@ -77,6 +77,7 @@ function open(item: GridItem): void {
     trigger="click"
     placement="bottom-right"
     :show-arrow="false"
+    overlay-inner-class-name="grid-popup-inner"
   >
     <t-button
       variant="text"
@@ -117,14 +118,6 @@ function open(item: GridItem): void {
 </template>
 
 <style scoped>
-/* 剥离 TDesign popup 内容层的默认底色/内边距/阴影，
-   避免「弹框里再套一张卡片」的双层观感——面板样式全部由 .grid-panel 承担 */
-:deep(.t-popup__content) {
-  padding: 0;
-  background: transparent;
-  box-shadow: none;
-  border-radius: 0;
-}
 .grid-trigger {
   color: #5f6368;
 }
@@ -177,5 +170,20 @@ function open(item: GridItem): void {
   margin-top: 12px;
   padding: 12px 0 4px;
   text-align: center;
+}
+</style>
+
+<!--
+  t-popup 内容 teleport 到 body，scoped 的 :deep(.t-popup__content) 会带 data-v-xxx
+  属性选择器而匹配不到，故用非 scoped 样式 + overlay-inner-class-name 精准清除
+  TDesign 默认的白底/内边距/边框，消除「弹框里再套一张卡片」的灰色间隙。
+-->
+<style>
+.grid-popup-inner.t-popup__content {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
 }
 </style>

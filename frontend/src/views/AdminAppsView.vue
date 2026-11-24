@@ -289,11 +289,20 @@ const STATUS_LABEL: Record<string, string> = { draft: '草稿', published: '已�
       <t-tab-panel value="categories" label="分类管理">
         <div class="mt-4">
           <t-card class="mb-4">
-            <div class="flex flex-wrap items-end gap-3">
-              <t-form-item label="编码"><t-input v-model="catForm.code" placeholder="如 ai" class="w-[160px]" /></t-form-item>
-              <t-form-item label="名称"><t-input v-model="catForm.name" placeholder="如 AI 工具" class="w-[180px]" /></t-form-item>
-              <t-form-item label="排序"><t-input-number v-model="catForm.sort_order" class="w-[120px]" /></t-form-item>
-              <t-button theme="primary" @click="addCategory"><AddIcon /> 新增分类</t-button>
+            <div class="category-form">
+              <label class="category-field">
+                <span class="category-label">编码</span>
+                <t-input v-model="catForm.code" placeholder="如 ai" class="w-[160px]" />
+              </label>
+              <label class="category-field">
+                <span class="category-label">名称</span>
+                <t-input v-model="catForm.name" placeholder="如 AI 工具" class="w-[180px]" />
+              </label>
+              <label class="category-field">
+                <span class="category-label">排序</span>
+                <t-input-number v-model="catForm.sort_order" class="w-[120px]" />
+              </label>
+              <t-button theme="primary" class="category-add" @click="addCategory"><AddIcon /> 新增分类</t-button>
             </div>
           </t-card>
           <t-table
@@ -456,4 +465,25 @@ const STATUS_LABEL: Record<string, string> = { draft: '草稿', published: '已�
 </template>
 
 <style scoped>
+/* 分类新增表单：每个字段 label 在上、控件在下，整行末按钮与控件底部对齐。
+   不用 t-form-item：它在非 t-form 容器里自带间距/宽度，flex-wrap 下会把按钮挤到第二行错位。 */
+.category-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+.category-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.category-label {
+  font-size: 13px;
+  color: var(--color-ink-2, #4b5563);
+  line-height: 1.4;
+}
+.category-add {
+  flex: 0 0 auto;
+}
 </style>
