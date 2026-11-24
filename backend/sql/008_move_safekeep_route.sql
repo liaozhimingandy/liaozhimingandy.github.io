@@ -1,12 +1,10 @@
--- 008: SafeKeep 独立工具统一迁入 /tools/ 命名空间
+-- 008: [已废弃] SafeKeep 曾短暂迁入 /tools/ 命名空间 —— 请勿再执行
 --
--- 背景：站点路由整改后，独立工具统一收在 /tools/<tool>/ 下（如 /tools/safekeep/），
--- 与官网产品页 /products/*、门户页 /apps/* 区分开。前端 router 已把 /safekeep/
--- 永久重定向到 /tools/safekeep/，本迁移把门户目录里已登记的旧地址同步更新，
--- 保证应用中心卡片、首页九宫格跳转的是新地址。
+-- 历史背景：曾计划把独立工具统一收在 /tools/<tool>/ 下，把 /safekeep/ 改成
+-- /tools/safekeep/。但该 /tools/ 前缀在 www.alsoapp.com 的 ESA CDN 上有一条
+-- 单独的回源规则（指向旧 tools 站点），导致 /tools/safekeep/ 返回 GitHub 原生
+-- "Site not found"，请求根本到不了本站。因此该改名方案已回退，SafeKeep 恢复
+-- 使用根路径 /safekeep/（007 种子即为此值）。
 --
--- 幂等：重复执行无副作用；仅命中 launch_url 仍为旧值的记录。
-
-UPDATE portal_apps
-SET launch_url = '/tools/safekeep/', updated_at = now()
-WHERE launch_url = '/safekeep/';
+-- 本文件保留为空操作仅作历史记录。若库里已执行过旧版 008（launch_url 变为
+-- /tools/safekeep/），请执行 009_restore_safekeep_route.sql 回退。

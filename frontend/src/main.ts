@@ -47,7 +47,7 @@ async function boot(): Promise<void> {
   void router.isReady().then(() => {
     // 等 router 完成初始导航后再 replace，避免与初始导航竞争
     if (pendingPath) void router.replace(pendingPath)
-    if (needRestore) void router.replace('/tools/safekeep/')
+    if (needRestore) void router.replace('/safekeep/')
   })
 }
 void boot()

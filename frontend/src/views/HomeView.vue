@@ -16,7 +16,7 @@ interface ToolCard {
 
 const tools: ToolCard[] = [
   {
-    to: '/tools/safekeep',
+    to: '/safekeep',
     title: '锦囊',
     en: 'SafeKeep',
     desc: '本地零知识密码库。浏览器内 AES-256-GCM 加密，主密码与恢复码双钥匙解锁，纯密文本地存储与加密备份。',

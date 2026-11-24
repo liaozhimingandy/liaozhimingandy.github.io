@@ -56,17 +56,17 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/AdminAppsView.vue'),
     meta: { title: '应用中心管理' },
   },
-  // 独立工具统一收在 /tools/<tool>/ 命名空间下，便于与官网 /products/ 区分
+  // SafeKeep 独立工具：CDN 把 /tools/ 前缀单独回源到旧站，故用根路径 /safekeep/
   {
-    path: '/tools/safekeep/',
+    path: '/safekeep/',
     name: 'safekeep',
     component: () => import('@/views/SafeKeepView.vue'),
     meta: { title: '锦囊 SafeKeep' },
   },
-  // 旧路径 /safekeep/ 已并入 /tools/ 命名空间，永久重定向
+  // 曾短暂启用的 /tools/safekeep/ 重定向回根路径（CDN 规则修复后才会到达）
   {
-    path: '/safekeep/',
-    redirect: '/tools/safekeep/',
+    path: '/tools/safekeep/',
+    redirect: '/safekeep/',
   },
   // 工具集首页（SafeKeep 等独立工具的卡片入口页）
   {
