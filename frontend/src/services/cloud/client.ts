@@ -57,10 +57,9 @@ interface RecordResponse {
 }
 
 function endpoint(opts: CloudClientOptions): string {
+  // apiBase 为空 = 同源模式（fetch 走相对路径 /v1/...）；
+  // 显式 VITE_API_BASE_URL = 跨源模式。两者都是合法配置，不再把空串当「未启用」。
   const apiBase = (opts.base ?? cloudConfig().apiBase).replace(/\/+$/, '')
-  if (!apiBase) {
-    throw new CloudError('云端同步未启用（缺少 VITE_API_BASE_URL）', 'NOT_CONFIGURED', 0)
-  }
   return `${apiBase}/v1/configs/${TOOL_ID}/${VAULT_KEY}`
 }
 

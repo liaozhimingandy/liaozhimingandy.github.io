@@ -184,6 +184,25 @@ def pg_pool_max_size(default: int = 8) -> int:
         return default
 
 
+def pg_pool_timeout(default: int = 10) -> float:
+    """从池取连接的超时秒数（AP_PG_POOL_TIMEOUT）。远端偶发挂起时快速失败再重试。"""
+    raw = os.environ.get("AP_PG_POOL_TIMEOUT", str(default)).strip()
+    try:
+        return max(1.0, float(raw))
+    except ValueError:
+        return float(default)
+
+
+def pg_pool_max_lifetime(default: int = 300) -> int:
+    """连接最大存活秒数。远端（云主机/PgBouncer）会回收长连接，
+    主动轮换比让请求踩到已死连接便宜；AP_PG_POOL_MAX_LIFETIME 可覆盖。"""
+    raw = os.environ.get("AP_PG_POOL_MAX_LIFETIME", str(default)).strip()
+    try:
+        return max(30, int(raw))
+    except ValueError:
+        return default
+
+
 def cors_origins() -> list[str]:
     """允许的跨域来源白名单（逗号分隔）。
 

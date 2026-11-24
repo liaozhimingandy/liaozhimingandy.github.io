@@ -198,10 +198,14 @@ test('putVault：body 为不透明 value + expected_revision + device，无明�
   assert.ok(!JSON.stringify(sent).includes('vaultKey'))
 })
 
-test('未配置 base 时请求失败为 NOT_CONFIGURED（不发起网络）', async () => {
-  const f = (async () => { throw new Error('should not be called') }) as typeof fetch
-  await assert.rejects(
-    () => fetchVault(opts({ base: '', fetchImpl: f })),
-    (e: unknown) => e instanceof CloudError && e.code === 'NOT_CONFIGURED',
-  )
+test('空 base = 同源模式：请求走相对路径 /v1/...（正常发起）', async () => {
+  const blob = buildCloudBlob(makeAccount(), makeItems(), 5, 10)
+  let calledPath = ''
+  const f = (async (url: string) => {
+    calledPath = url
+    return jsonResp(200, okRecord(blob, 1))
+  }) as typeof fetch
+  const r = await fetchVault(opts({ base: '', fetchImpl: f }))
+  assert.equal(r.revision, 1)
+  assert.ok(calledPath.startsWith('/v1/configs/safekeep/vault'), `相对路径: ${calledPath}`)
 })

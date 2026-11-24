@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center gap-3 px-3 border-b-2 border-red-500 bg-white">
     <div class="flex flex-1 items-center gap-2">
-      <img class="w-[50px]" src="https://www.alsoapp.com/favicon.svg" alt="you logo"/>
+      <img class="w-[50px]" src="/favicon.svg" alt="you logo"/>
       <t-input class="w-60" placeholder="Please input" disabled/>
     </div>
 

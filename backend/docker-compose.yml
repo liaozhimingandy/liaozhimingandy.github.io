@@ -37,7 +37,11 @@ services:
         echo "== applying 004_apps_portal.sql ==";
         psql -v ON_ERROR_STOP=1 -f /sql/004_apps_portal.sql;
         echo "== applying 005_apps_portal_seed.sql ==";
-        psql -v ON_ERROR_STOP=1 -f /sql/005_apps_portal_seed.sql'
+        psql -v ON_ERROR_STOP=1 -f /sql/005_apps_portal_seed.sql;
+        echo "== applying 006_apps_portal_launch_url_relax.sql ==";
+        psql -v ON_ERROR_STOP=1 -f /sql/006_apps_portal_launch_url_relax.sql;
+        echo "== applying 007_drop_tools_and_seed_safekeep.sql ==";
+        psql -v ON_ERROR_STOP=1 -f /sql/007_drop_tools_and_seed_safekeep.sql'
 
   # API 服务：FastAPI + uvicorn，容器内监听 0.0.0.0:$AP_PORT
   api:

@@ -33,20 +33,32 @@ from .portal_models import (
 )
 
 # --------------------------------------------------------------------------- # URL 安全校验
-# 仅允许 http/https 绝对 URL，且必须有主机；禁止 userinfo（防钓鱼伪装）。
+# 绝对地址：仅 http/https 且必须有主机；禁止 userinfo（防钓鱼伪装）。
 _SAFE_URL_RE = re.compile(r"^https?://[^/\s@?#]+(?::\d+)?(?:/[^\s]*)?$", re.IGNORECASE)
+# 本站相对路径：以单个 / 开头（// 开头是 protocol-relative 外站地址，拒绝）；
+# 不含空白、反斜杠与控制字符。query/fragment 允许（/apps/?q=1#锚点）。
+_SAFE_SITE_PATH_RE = re.compile(r"^/(?!/)[^\s\\]*$")
 
 
 def validate_launch_url(url: str) -> str:
-    """校验应用访问地址：空串允许（草稿/未部署）；非空必须 http(s) 且无 userinfo。
+    """校验应用访问地址：空串允许（草稿/未部署）。
+
+    非空接受两种形态：
+      1. http/https 绝对地址（必须有主机、无 userinfo）；
+      2. 本站相对路径（以单个 / 开头，如 /wedesk/、/apps/xxx/），指向本站内页，
+         前端启动时按当前 origin 解析。
 
     双重防线：SQL CHECK 已做粗校验，这里做严格校验（含 userinfo、控制字符）。
     """
     value = (url or "").strip()
     if not value:
         return ""
-    if not _SAFE_URL_RE.match(value) or any(ord(c) < 0x20 for c in value):
-        raise ValidationError("launch_url 必须是合法的 http/https 地址")
+    if any(ord(c) < 0x20 for c in value):
+        raise ValidationError("launch_url 不允许包含控制字符")
+    if _SAFE_SITE_PATH_RE.match(value):
+        return value
+    if not _SAFE_URL_RE.match(value):
+        raise ValidationError("launch_url 必须是合法的 http/https 地址或以 / 开头的本站相对路径")
     parsed = urlparse(value)
     if parsed.scheme.lower() not in ("http", "https") or not parsed.netloc or parsed.username:
         raise ValidationError("launch_url 不允许包含用户凭据或非 http(s) 协议")

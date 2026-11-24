@@ -1,5 +1,9 @@
 /// <reference types="vite/client" />
 
+/** 构建期 define 注入的全局常量（见 vite.config.ts；单测/无 define 环境降级 unknown）。 */
+declare const __APP_VERSION__: string | undefined
+declare const __COMMIT_HASH__: string | undefined
+
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
   const component: DefineComponent<object, object, unknown>

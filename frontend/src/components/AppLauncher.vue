@@ -44,7 +44,7 @@ function close(): void {
     @update:visible="emit('update:visible', $event)"
   >
     <div class="launcher">
-      <div class="flex items-center gap-2 mb-3">
+      <div class="flex items-center gap-2 mb-4">
         <AppIcon size="20px" class="text-brand" />
         <span class="text-base font-semibold flex-1">应用切换器</span>
         <t-button size="small" variant="text" @click="close">关闭</t-button>
@@ -54,13 +54,13 @@ function close(): void {
         <template #prefix-icon><SearchIcon /></template>
       </t-input>
 
-      <t-tabs v-model="tab" class="mt-3">
+      <t-tabs v-model="tab" class="mt-4">
         <t-tab-panel value="all" label="全部应用" />
         <t-tab-panel value="favorites" label="常用" />
         <t-tab-panel value="recent" label="最近使用" />
       </t-tabs>
 
-      <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-3 max-h-[46vh] overflow-auto">
+      <div class="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-4 max-h-[46vh] overflow-auto">
         <button
           v-for="app in filtered"
           :key="app.id"
@@ -79,7 +79,7 @@ function close(): void {
         </div>
       </div>
 
-      <div class="flex items-center gap-4 mt-3 pt-3 border-t border-line text-[12px] text-ink-3">
+      <div class="flex items-center gap-4 mt-4 pt-3 border-t border-line text-[12px] text-ink-3">
         <span class="flex items-center gap-1"><StarIcon size="13px" /> 收藏优先</span>
         <span class="flex items-center gap-1"><HistoryIcon size="13px" /> 最近 10 个</span>
       </div>
@@ -94,7 +94,7 @@ function close(): void {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 12px 6px;
+  padding: 14px 6px;
   border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
@@ -107,8 +107,8 @@ function close(): void {
   border-color: var(--color-line);
 }
 .launcher-icon {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 11px;
   overflow: hidden;
   display: flex;

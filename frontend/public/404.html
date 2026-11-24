@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      GitHub Pages SPA 兜底页：history 模式刷新 /wedesk/ 等路径时 Pages 找不到
+      对应文件会返回本页。这里把原始路径暂存 sessionStorage 后回到首页，
+      由 main.ts 挂载后 router.replace 恢复原路径（后端托管形态 spa_fallback
+      直接返回 index.html，不经过本页）。
+    -->
+    <script>
+      try {
+        sessionStorage.setItem('ap-404-path', location.pathname + location.search + location.hash)
+      } catch (e) { /* 隐私模式忽略 */ }
+      location.replace('/')
+    </script>
+    <title>Also Apps</title>
+  </head>
+  <body>页面跳转中…</body>
+</html>

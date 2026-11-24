@@ -13,16 +13,6 @@
   </head>
   <body>
     <div id="app"></div>
-    <script>
-      // 旧官网 history 链接兼容：/wedesk/、/privacy/ 等直达路径没有 hash，
-      // 重定向到 /#<原路径>，由 hash 路由接住；站点根（/ 与 /ap/）不处理。
-      (function () {
-        var p = window.location.pathname;
-        if (p !== '/' && p !== '/ap/' && !window.location.hash) {
-          window.location.replace('/#' + p + window.location.search);
-        }
-      })();
-    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

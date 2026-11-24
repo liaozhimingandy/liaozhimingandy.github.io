@@ -89,39 +89,39 @@ function goto(code: string): void { void router.push({ name: 'apps', query: { ca
     <t-loading :loading="state.loading && !state.loaded" size="small" class="min-h-[200px]">
       <!-- 常用 / 最近（仅登录用户） -->
       <template v-if="authenticated && (favorites.length || recent.length)">
-        <section v-if="favorites.length" class="mt-8">
-          <div class="flex items-center justify-between mb-3">
+        <section v-if="favorites.length" class="mt-10">
+          <div class="flex items-center justify-between mb-4">
             <h2 class="section-title"><StarIcon size="18px" class="text-amber" /> 常用应用</h2>
             <t-link theme="primary" @click="goto('all')">管理收藏 <ArrowRightIcon size="14px" /></t-link>
           </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <AppCard v-for="app in favorites" :key="app.id" :app="app" :favorited="true" @toggle-favorite="toggleFavorite" @launch="open" />
           </div>
         </section>
 
-        <section v-if="recent.length" class="mt-8">
-          <h2 class="section-title mb-3"><HistoryIcon size="18px" class="text-ink-3" /> 最近使用</h2>
-          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+        <section v-if="recent.length" class="mt-10">
+          <h2 class="section-title mb-4"><HistoryIcon size="18px" class="text-ink-3" /> 最近使用</h2>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <AppCard v-for="app in recent" :key="app.id" :app="app" compact :show-favorite="false" @launch="open" />
           </div>
         </section>
       </template>
 
       <!-- 推荐应用（未登录或未收藏时展示） -->
-      <section v-if="featured.length" class="mt-8">
-        <h2 class="section-title mb-3">推荐应用</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <section v-if="featured.length" class="mt-10">
+        <h2 class="section-title mb-4">推荐应用</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <AppCard v-for="app in featured" :key="app.id" :app="app" :favorited="favoriteIds.has(app.id)" @toggle-favorite="toggleFavorite" @launch="open" />
         </div>
       </section>
 
       <!-- 按分类展示 -->
-      <section v-for="group in categorized" :key="group.category.code" class="mt-8">
-        <div class="flex items-center justify-between mb-3">
+      <section v-for="group in categorized" :key="group.category.code" class="mt-10">
+        <div class="flex items-center justify-between mb-4">
           <h2 class="section-title">{{ group.category.name }}</h2>
           <t-link theme="primary" size="small" @click="goto(group.category.code)">查看全部 <ArrowRightIcon size="14px" /></t-link>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <AppCard v-for="app in group.apps" :key="app.id" :app="app" :favorited="favoriteIds.has(app.id)" @toggle-favorite="toggleFavorite" @launch="open" />
         </div>
       </section>
@@ -137,8 +137,8 @@ function goto(code: string): void { void router.push({ name: 'apps', query: { ca
 
 <style scoped>
 .hero {
-  margin-top: 20px;
-  padding: 36px 32px;
+  margin-top: 24px;
+  padding: 44px 40px;
   border-radius: 18px;
   background: linear-gradient(120deg, var(--color-brand-softer), var(--color-brand-soft));
   border: 1px solid var(--color-line);

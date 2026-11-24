@@ -59,6 +59,13 @@ def _app(
 
 DEFAULT_APPS: tuple[AppRecord, ...] = (
     _app(
+        "SAFEKEEP", "锦囊 SafeKeep", "零知识在线密码保险库",
+        "浏览器端 AES-256-GCM 加密，主密码与恢复码双钥匙解锁，服务端只保存密文。",
+        app_type="tool", categories=("productivity", "other"),
+        launch_url="/safekeep/",
+        status="published", published=True, featured=True, sort_order=5,
+    ),
+    _app(
         "ALSO_ACCOUNT", "Also Account", "统一身份认证中心",
         "管理你的 Also 账号、应用授权与登录安全。",
         app_type="service", categories=("productivity", "other"),

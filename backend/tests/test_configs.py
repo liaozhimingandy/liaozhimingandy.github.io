@@ -347,6 +347,29 @@ class TestConfigAPI(_BaseAPITest):
         self.assertEqual(big.status_code, 413)
 
 
+class TestPortalToolRegistry(unittest.TestCase):
+    """生产实现：准入以 portal_apps 为权威（published ≙ enabled）。"""
+
+    def test_portal_backed_registry(self) -> None:
+        from app.portal_store import MemoryPortalRepository
+        from app.tools_registry import PortalToolRegistry
+
+        reg = PortalToolRegistry(MemoryPortalRepository())
+        # SAFEKEEP 种子已发布：大小写不敏感准入
+        self.assertTrue(reg.exists_enabled("safekeep"))
+        self.assertTrue(reg.exists_enabled("SAFEKEEP"))
+        self.assertFalse(reg.exists_enabled("ghosttool"))
+        # ALSO_TOOLS 种子保持草稿：不可准入
+        draft = reg.get("also_tools")
+        self.assertIsNotNone(draft)
+        self.assertFalse(draft.enabled)
+        self.assertFalse(reg.exists_enabled("also_tools"))
+        # list 只含 published，且已映射为 ToolRecord
+        items = reg.list()
+        self.assertTrue(items and all(t.enabled for t in items))
+        self.assertEqual(reg.get("safekeep").name, "锦囊 SafeKeep")
+
+
 class TestToolsAPI(_BaseAPITest):
     def test_list_tools_returns_enabled_seed(self) -> None:
         r = self.client.get("/v1/tools")

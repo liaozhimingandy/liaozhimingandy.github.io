@@ -19,6 +19,15 @@ import './styles/global.css'
  * initAuth 内部对「未配置」与任何异常都降级为空操作，绝不阻断应用挂载（不白屏）。
  */
 async function boot(): Promise<void> {
+  // GitHub Pages 404.html 兜底恢复：Pages 刷新深路径时先落 404.html（把原始路径
+  // 暂存 sessionStorage 后跳回 /），这里读回并 replace 到原路径。
+  // 后端托管形态 spa_fallback 直接返回 index.html，不走 404.html，此逻辑无副作用。
+  let pendingPath: string | null = null
+  try {
+    pendingPath = sessionStorage.getItem('ap-404-path')
+    if (pendingPath) sessionStorage.removeItem('ap-404-path')
+  } catch { /* 隐私模式忽略 */ }
+
   try {
     await initAuth()
   } catch {
@@ -26,12 +35,8 @@ async function boot(): Promise<void> {
   }
   // 「从云端恢复」登录回跳：只要存在未消费的恢复意图，就把路由定位回锦囊，
   // 让 useSafeKeep 依据「意图 + 已登录」续做拉取。这里只做路由归位，不消费意图、不拉取。
-  //
-  // 两个历史坑（都已规避）：
-  //  1) createWebHashHistory() 在模块导入阶段就把无 fragment 的回调 URL 补成 '...#/'，
-  //     所以不能靠「回调 URL 有没有 hash」判断是否归位，只认意图本身；
-  //  2) 必须用 router.replace 而不是 window.history.replaceState：router 缓存了初始
-  //     location，直接改写 hash 会被初始导航覆盖回 '#/'，导致停在门户、续做不触发。
+  // history 模式下回调 URL（/?code=&state=）没有 hash，shouldRestoreRoute('') 恒为 true，
+  // 即「有意图就归位」，与旧 hash 模式语义一致。
   const needRestore =
     typeof window !== 'undefined' &&
     hasRestoreIntent(sessionRestoreStore()) &&
@@ -39,9 +44,10 @@ async function boot(): Promise<void> {
 
   createApp(App).use(router).use(TDesign).mount('#app')
 
-  if (needRestore) {
+  void router.isReady().then(() => {
     // 等 router 完成初始导航后再 replace，避免与初始导航竞争
-    void router.isReady().then(() => router.replace('/safekeep'))
-  }
+    if (pendingPath) void router.replace(pendingPath)
+    if (needRestore) void router.replace('/safekeep/')
+  })
 }
 void boot()

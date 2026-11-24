@@ -22,7 +22,11 @@ $$;
 GRANT USAGE ON SCHEMA public TO tools_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON tool_configs TO tools_app;
 GRANT USAGE, SELECT ON SEQUENCE tool_configs_id_seq TO tools_app;
--- 工具注册表是全局元数据：应用只需读取启用清单，无写权限；
--- 新增/修改工具由管理员用管理 DSN 执行（或跑 003 迁移的种子）。
-GRANT SELECT ON tools TO tools_app;
--- 刻意不授予 TRUNCATE / DROP / 表结构变更权限，也不授予 tools 写权限。
+-- 历史遗留：tools 注册表已下线（007 物理删除）；若旧库中表仍在，保持应用只读。
+-- 刻意不授予 TRUNCATE / DROP / 表结构变更权限。
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'tools') THEN
+        GRANT SELECT ON tools TO tools_app;
+    END IF;
+END $$;

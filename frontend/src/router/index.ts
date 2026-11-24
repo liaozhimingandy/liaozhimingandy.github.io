@@ -1,53 +1,69 @@
-import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 /**
- * Also Apps 统一站点路由表 = 应用门户 + 官网页面。
- * 新增应用 = 在 routes 里加一条记录 + 在 views/ 下加一个视图 + 在门户首页加卡片。
+ * Also Apps 统一站点路由表 = 官网 + 应用门户。
+ * 新增应用 = 在 routes 里加一条记录 + 在 views/ 下加一个视图 + 在门户应用中心加卡片。
  *
- * 采用 hash 模式（/#/safekeep），原因有三：
- *   1. GitHub Pages 是纯静态托管，history 模式直接刷新 /safekeep 会 404，hash 不发给服务器；
- *   2. OAuth2/Logto 的 redirect_uri 禁止带 fragment(#)，hash 路由让回调落在站点根上，
- *      由 main.ts 在挂载前消费 code/state，再 replace 到 #/safekeep（详见 auth service）；
- *   3. 后端（FastAPI）托管 dist 时同一份产物在 /ap/ 前缀下也能直接运行，无需 history 回退配置。
+ * 采用 history 模式 + 统一尾斜杠（/wedesk/），理由：
+ *   1. URL 干净（无 #），与旧官网 /wedesk/ 形态完全一致，旧收录链接零迁移成本；
+ *   2. 后端（FastAPI）托管时 spa_fallback 对任意路径返回 index.html，刷新不 404；
+ *   3. GitHub Pages 纯静态托管用 404.html 兜底（public/404.html 把原始路径暂存
+ *      sessionStorage 后回到首页，main.ts 挂载后 replace 回原路径），刷新同样不 404；
+ *   4. OAuth2/Logto 的 redirect_uri 禁止带 fragment(#)，history 模式回调落在
+ *      /?code=&state=，由 main.ts 在挂载前消费（详见 auth service）。
  *
- * 旧官网 history 链接（/wedesk/ 等）的兼容：index.html 中的内联脚本会把「非根路径且无 hash」
- * 的访问重定向到 /#<原路径>，旧收录链接仍可到达对应页面。
+ * 所有路由 path 以 / 结尾；beforeEach 把无尾斜杠的访问统一重定向，保持 URL 形态一致。
  */
 const routes: RouteRecordRaw[] = [
-  // ---- Also Apps 统一应用门户（站点首页即门户） ----
+  // ---- 站点首页 = 官网首页（右上角产品九宫格弹窗进入门户能力） ----
   {
     path: '/',
     name: 'home',
+    component: () => import('@/website/views/HomePage.vue'),
+    meta: { title: '欢迎使用', website: true },
+  },
+  // 官网旧路径 /home/ 与旧命名路由 'index' 都归一到 /
+  {
+    path: '/home/',
+    name: 'index',
+    redirect: '/',
+    meta: { website: true },
+  },
+
+  // ---- Also Apps 统一应用门户 ----
+  {
+    path: '/apps-home/',
+    name: 'apps-home',
     component: () => import('@/views/AppsHomeView.vue'),
     meta: { title: 'Also Apps' },
   },
   {
-    path: '/apps',
+    path: '/products/',
     name: 'apps',
     component: () => import('@/views/AppsCenterView.vue'),
     meta: { title: '应用中心' },
   },
   {
-    path: '/apps/:code',
+    path: '/apps/:code/',
     name: 'app-detail',
     component: () => import('@/views/AppDetailView.vue'),
     meta: { title: '应用详情' },
   },
   {
-    path: '/admin/apps',
+    path: '/admin/apps/',
     name: 'admin-apps',
     component: () => import('@/views/AdminAppsView.vue'),
     meta: { title: '应用中心管理' },
   },
   {
-    path: '/safekeep',
+    path: '/safekeep/',
     name: 'safekeep',
     component: () => import('@/views/SafeKeepView.vue'),
     meta: { title: '锦囊 SafeKeep' },
   },
   // 工具集首页（SafeKeep 等独立工具的卡片入口页）
   {
-    path: '/tools-home',
+    path: '/tools-home/',
     name: 'tools-home',
     component: () => import('@/views/HomeView.vue'),
     meta: { title: '工具集' },
@@ -55,55 +71,55 @@ const routes: RouteRecordRaw[] = [
 
   // ---- 官网页面（原 alsoapp.com 主站，meta.website 标记走旧 title 后缀） ----
   {
-    path: '/home',
-    name: 'index',
-    component: () => import('@/website/views/HomePage.vue'),
-    meta: { title: '欢迎使用', website: true },
-  },
-  {
-    path: '/products',
+    path: '/products/',
     name: 'products',
     component: () => import('@/website/views/ProductPage.vue'),
     meta: { title: '产品信息', website: true },
   },
   {
-    path: '/products/superset',
+    path: '/products/superset/',
     name: 'superset',
     component: () => import('@/website/views/SupersetPage.vue'),
     meta: { title: 'superset', website: true },
   },
   {
-    path: '/wedesk',
+    path: '/wedesk/',
     name: 'wedesk',
     component: () => import('@/website/views/WedeskPage.vue'),
     meta: { title: 'WeDesk 远程桌面', website: true },
   },
   {
-    path: '/zaima',
+    path: '/zaima/',
     name: 'zaima',
     component: () => import('@/website/views/ZaimaPage.vue'),
     meta: { title: '在吗 - 定时签到报平安', website: true },
   },
   {
-    path: '/resumes/:user_id',
+    path: '/resumes/:user_id/',
     name: 'resumes',
     component: () => import('@/website/views/ResumePage.vue'),
     meta: { title: '简历信息', website: true },
   },
   {
-    path: '/privacy',
+    path: '/privacy/',
     name: 'privacy',
     component: () => import('@/website/views/PrivacyPage.vue'),
     meta: { title: '隐私政策', website: true },
   },
   {
-    path: '/test',
+    path: '/terms/',
+    name: 'terms',
+    component: () => import('@/website/views/TermsPage.vue'),
+    meta: { title: '服务条款', website: true },
+  },
+  {
+    path: '/test/',
     name: 'test',
     component: () => import('@/website/views/TestPage.vue'),
     meta: { title: '组件测试', website: true },
   },
   {
-    path: '/login',
+    path: '/login/',
     name: 'login',
     component: () => import('@/website/views/LoginPage.vue'),
     meta: { title: '登录', website: true },
@@ -118,8 +134,17 @@ const routes: RouteRecordRaw[] = [
 ]
 
 const router = createRouter({
-  history: createWebHashHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes,
+})
+
+// 统一 URL 尾斜杠：无尾斜杠的访问（含 404 兜底路径）一律 301 式重定向补齐，
+// 与旧官网 /wedesk/ 形态及搜索引擎收录保持一致
+router.beforeEach((to) => {
+  if (to.path !== '/' && !to.path.endsWith('/')) {
+    return { path: to.path + '/', query: to.query, hash: to.hash }
+  }
+  return true
 })
 
 router.afterEach((to) => {

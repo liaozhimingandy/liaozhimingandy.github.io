@@ -23,7 +23,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.store import ConflictError, NotFoundError, PostgresRepository  # noqa: E402
-from app.tools_registry import PostgresToolRepository  # noqa: E402
 
 # 应用连接用非特权的 tools_app 角色，而非 postgres 超级用户（后者 BYPASSRLS）
 DSN = os.environ.get(
@@ -128,34 +127,28 @@ def main() -> None:
             # 关键判据是错误消息含 "row-level security"，而非具体异常子类。
             check("RLS 拒绝跨用户写入", "row-level security" in str(e).lower(), type(e).__name__)
 
-        # 9. 工具注册表：真实查询 + 应用角色只读 + 准入语义
-        treg = PostgresToolRepository(DSN)
+        # 9. 工具准入注册表：以 portal_apps 为权威（tools 表已下线）
+        from app.portal_store_pg import PostgresPortalRepository  # noqa: E402
+        from app.tools_registry import PortalToolRegistry  # noqa: E402
+
+        preg = PostgresPortalRepository(DSN)
+        treg = PortalToolRegistry(preg)
         try:
+            # SAFEKEEP 种子应用已发布（007），configs 准入以此为准
             seed = treg.get("safekeep")
-            check("tools 种子 safekeep 可读", seed is not None and seed.enabled)
-            check("tools 是全局元数据：无 RLS（应用角色可见）", treg.exists_enabled("safekeep"))
+            check("portal 种子 safekeep 已发布可读", seed is not None and seed.enabled)
+            check("published 应用准入", treg.exists_enabled("safekeep"))
             check("未注册工具不准入", not treg.exists_enabled("ghosttool"))
-            # 管理员插一个禁用工具，验证 exists_enabled 过滤
-            with psycopg.connect(ADMIN_DSN) as c:
-                c.execute(
-                    "INSERT INTO tools (tool_id, name, enabled) VALUES ('retired_pg','退役',FALSE) "
-                    "ON CONFLICT (tool_id) DO UPDATE SET enabled=FALSE"
-                )
-            check("禁用工具 get 可见", treg.get("retired_pg") is not None)
-            check("禁用工具不准入", not treg.exists_enabled("retired_pg"))
-            check("list 默认过滤禁用工具", all(t.tool_id != "retired_pg" for t in treg.list()))
-            check("list(enabled_only=False) 含禁用工具",
-                  any(t.tool_id == "retired_pg" for t in treg.list(enabled_only=False)))
-            # 应用角色对 tools 只读：写应被拒（002 未授 INSERT）
-            denied = False
-            try:
-                with psycopg.connect(DSN) as c:
-                    c.execute("INSERT INTO tools (tool_id, name) VALUES ('hack','x')")
-            except psycopg.Error:
-                denied = True
-            check("应用角色无 tools 写权限（最小权限）", denied)
+            check("list 默认只含 published",
+                  all(t.enabled for t in treg.list()))
+            # draft 应用不可作为工具准入（如 ALSO_TOOLS 保持草稿）
+            draft = treg.get("also_tools")
+            check("draft 应用不准入", draft is not None and not draft.enabled
+                  and not treg.exists_enabled("also_tools"))
+            check("tool_id 小写映射 portal code",
+                  seed is not None and seed.tool_id == "safekeep")
         finally:
-            treg.close()
+            preg.close()
 
         print("\nALL_PG_INTEGRATION_CHECKS_PASSED")
     finally:

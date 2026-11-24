@@ -9,7 +9,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from contextlib import contextmanager
+from typing import Any, Iterator
 
 from .portal_ids import iso_utc, utcnow
 from .portal_models import (
@@ -48,20 +49,51 @@ class PostgresPortalRepository:
         from psycopg_pool import ConnectionPool  # type: ignore[import-not-found]
         from . import config
 
+        # check + max_lifetime：远端断连自愈（详见 store.PostgresRepository 同款注释）
         self._pool = ConnectionPool(
             dsn,
             min_size=1,
             max_size=config.pg_pool_max_size(4),
             open=True,
+            check=ConnectionPool.check_connection,
+            max_lifetime=config.pg_pool_max_lifetime(300),
             kwargs=config.pg_connect_kwargs(),
         )
 
     def close(self) -> None:
         self._pool.close()
 
+    @contextmanager
+    def _conn(self) -> Iterator[Any]:
+        """取连接，带一次 PoolTimeout 自动重试。
+
+        远端（公网 PgBouncer）偶发挂起/慢连会让 checkout 阻塞到超时；
+        超时后再取一次（check_connection 会把坏连接换新），多数情况一次重试即恢复，
+        避免把「瞬时抖动」直接放大成 500。仅重试「取连接」阶段，查询体不重试
+        （写操作重放不安全，由上层 CAS 语义兜底）。
+        """
+        from psycopg_pool import PoolTimeout  # 延迟导入，与池创建同源
+
+        from . import config
+
+        timeout = config.pg_pool_timeout(10)
+        try:
+            cm = self._pool.connection(timeout=timeout)
+            conn = cm.__enter__()
+        except PoolTimeout:
+            cm = self._pool.connection(timeout=timeout)
+            conn = cm.__enter__()
+        try:
+            yield conn
+        except BaseException as exc:
+            cm.__exit__(type(exc), exc, exc.__traceback__)
+            raise
+        else:
+            cm.__exit__(None, None, None)
+
     # ------------------------------------------------------------------ 内部辅助
     def _rows(self, sql: str, params: tuple[Any, ...] = ()) -> list[tuple[Any, ...]]:
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(sql, params)
                 return list(cur.fetchall())
@@ -71,20 +103,20 @@ class PostgresPortalRepository:
         return rows[0] if rows else None
 
     def _exec(self, sql: str, params: tuple[Any, ...] = ()) -> None:
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(sql, params)
 
     def _user_rows(self, user_sub: str, sql: str, params: tuple[Any, ...] = ()) -> list[tuple[Any, ...]]:
         """用户态查询：同一事务内声明 user_sub，RLS 强制隔离。"""
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT set_config('app.user_sub', %s, true)", (user_sub,))
                 cur.execute(sql, params)
                 return list(cur.fetchall())
 
     def _user_exec(self, user_sub: str, sql: str, params: tuple[Any, ...] = ()) -> None:
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT set_config('app.user_sub', %s, true)", (user_sub,))
                 cur.execute(sql, params)
@@ -201,7 +233,7 @@ class PostgresPortalRepository:
         if app.code.upper() in {a.code for a in self.list_apps(include_private=True, status=None)}:
             raise ValidationError("应用编码已存在")
         launch = validate_launch_url(app.launch_url)
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "INSERT INTO portal_apps "
@@ -257,7 +289,7 @@ class PostgresPortalRepository:
             return existing
         sets.append("updated_at = now()")
         params.append(app_id)
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     f"UPDATE portal_apps SET {', '.join(sets)} WHERE id = %s::uuid", tuple(params)
@@ -265,7 +297,7 @@ class PostgresPortalRepository:
         return self.get_app_by_id(app_id)  # type: ignore[return-value]
 
     def delete_app(self, app_id: str) -> None:
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM portal_apps WHERE id = %s::uuid", (app_id,))
                 if cur.rowcount == 0:
@@ -274,7 +306,7 @@ class PostgresPortalRepository:
     def set_app_categories(self, app_id: str, category_codes: tuple[str, ...]) -> AppRecord:
         if not self.get_app_by_id(app_id):
             raise NotFoundError("应用不存在")
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 self._set_categories(cur, app_id, category_codes)
         return self.get_app_by_id(app_id)  # type: ignore[return-value]
@@ -296,7 +328,7 @@ class PostgresPortalRepository:
         return self._category_from_row(row) if row else None
 
     def create_category(self, category: CategoryRecord) -> CategoryRecord:
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "INSERT INTO app_categories (code, name, description, icon, parent_id, sort_order, status) "
@@ -327,7 +359,7 @@ class PostgresPortalRepository:
         return self.get_category_by_id(category_id)  # type: ignore[return-value]
 
     def delete_category(self, category_id: str) -> None:
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("DELETE FROM app_categories WHERE id = %s::uuid", (category_id,))
                 if cur.rowcount == 0:
@@ -353,7 +385,7 @@ class PostgresPortalRepository:
         existing = next((f for f in self.list_favorites(user_sub) if f.app_id == app_id), None)
         if existing:
             raise ConflictError("已收藏该应用")
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT set_config('app.user_sub', %s, true)", (user_sub,)
@@ -370,7 +402,7 @@ class PostgresPortalRepository:
         )
 
     def remove_favorite(self, user_sub: str, app_id: str) -> None:
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT set_config('app.user_sub', %s, true)", (user_sub,))
                 cur.execute(
@@ -409,7 +441,7 @@ class PostgresPortalRepository:
         ]
 
     def record_visit(self, user_sub: str, app_id: str) -> RecentVisitRecord:
-        with self._pool.connection() as conn:
+        with self._conn() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT set_config('app.user_sub', %s, true)", (user_sub,))
                 cur.execute(

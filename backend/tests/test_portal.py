@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 from app.auth import DevHeaderProvider
 from app.main import app
 from app.portal_ids import uuid7
-from app.portal_models import AppRecord, CategoryRecord
+from app.portal_models import AppRecord, CategoryRecord, ValidationError
 from app.portal_store import MemoryPortalRepository, validate_launch_url
 from app.store import MemoryRepository
 from app.tools_registry import MemoryToolRepository
@@ -279,6 +279,14 @@ class TestDomainHelpers(unittest.TestCase):
     def test_validate_launch_url_accepts_empty_and_https(self) -> None:
         self.assertEqual(validate_launch_url(""), "")
         self.assertEqual(validate_launch_url("  https://a.example/app?x=1  "), "https://a.example/app?x=1")
+
+    def test_validate_launch_url_accepts_site_relative_paths(self) -> None:
+        """本站内页相对路径（单个 / 开头）合法；protocol-relative 与反斜杠拒绝。"""
+        for good in ("/wedesk/", "/apps/xxx/?q=1#top", "/"):
+            self.assertEqual(validate_launch_url(good), good)
+        for bad in ("//evil.com/x", "/a\\b", "relative/no-slash", "/ path with space"):
+            with self.assertRaises(ValidationError):
+                validate_launch_url(bad)
 
     def test_delete_app_cascades_favorites_and_visits(self) -> None:
         repo = MemoryPortalRepository(seed=False)

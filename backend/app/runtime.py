@@ -11,7 +11,7 @@ from __future__ import annotations
 from . import auth, config
 from .auth import AuthProvider, LogtoJWTProvider
 from .store import ConfigRepository, MemoryRepository
-from .tools_registry import ToolRepository, build_repository as build_tool_repository
+from .tools_registry import PortalToolRegistry, ToolRepository
 from .portal_store import PortalRepository, build_repository as build_portal_repository
 
 
@@ -43,14 +43,12 @@ def build_repository() -> ConfigRepository:
     return MemoryRepository()
 
 
-def build_tools() -> ToolRepository:
-    """工具注册表：postgres 模式查 tools 表；memory 模式用内置种子。
+def build_tools(portal: PortalRepository) -> ToolRepository:
+    """工具准入注册表：以 portal_apps 为唯一数据源（tools 表已下线）。
 
-    fail-closed：postgres 模式必须有 DSN（build_repository 已校验），此处复用同一 DSN。
+    直接包装门户仓储，复用同一连接池，不再单独建 tools 池。
     """
-    if config.store_backend() == "postgres":
-        return build_tool_repository(config.database_url())
-    return build_tool_repository(None)
+    return PortalToolRegistry(portal)
 
 
 def build_portal(dsn: str | None) -> PortalRepository:
@@ -73,10 +71,11 @@ def wire(app) -> None:
     """把依赖挂到 app.state，供 API 路由通过 request.app.state 取用。"""
     provider = build_auth_provider()
     repo = build_repository()
+    portal = build_portal(dsn_if_needed())
     app.state.auth_provider = provider
     app.state.repository = repo
-    app.state.tool_repository = build_tools()
-    app.state.portal_repository = build_portal(dsn_if_needed())
+    app.state.portal_repository = portal
+    app.state.tool_repository = build_tools(portal)
     app.state.logto_configured = logto_configured(provider)
     app.state.store_backend = config.store_backend()
 

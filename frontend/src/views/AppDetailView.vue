@@ -77,7 +77,7 @@ function formatTime(iso: string | null): string {
   <PortalHeader />
 
   <main class="mx-auto max-w-5xl px-4 pb-16">
-    <t-button variant="text" size="small" class="mb-4" @click="back">
+    <t-button variant="text" size="small" class="mb-5" @click="back">
       <ChevronLeftIcon /> 返回
     </t-button>
 
@@ -120,16 +120,16 @@ function formatTime(iso: string | null): string {
           </div>
         </t-card>
 
-        <t-card v-if="app.cover_url" class="mt-4">
+        <t-card v-if="app.cover_url" class="mt-5">
           <img :src="app.cover_url" :alt="`${app.name} 封面`" class="w-full rounded-lg object-cover max-h-[320px]" />
         </t-card>
 
-        <t-card class="mt-4">
+        <t-card class="mt-5">
           <h2 class="text-[16px] font-semibold mb-3">应用介绍</h2>
           <p class="text-[14px] text-ink-2 leading-7 whitespace-pre-wrap">{{ app.detail || app.description }}</p>
         </t-card>
 
-        <t-card class="mt-4">
+        <t-card class="mt-5">
           <h2 class="text-[16px] font-semibold mb-3">访问信息</h2>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-2 text-[13px]">
             <div><span class="text-ink-3">应用编码：</span><code>{{ app.code }}</code></div>

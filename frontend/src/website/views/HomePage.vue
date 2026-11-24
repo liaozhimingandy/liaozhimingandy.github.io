@@ -7,39 +7,13 @@
           <span class="text-base font-semibold text-gray-700">alsoapp</span>
         </router-link>
         <div class="flex items-center gap-4">
-          <router-link
-              :to="{'name': 'products'}"
-              class="text-sm text-gray-600 no-underline hover:text-brand"
-          >产品
-          </router-link>
-          <router-link
-              :to="{'name': 'wedesk'}"
-              class="text-sm text-gray-600 no-underline hover:text-brand"
-          >WeDesk
-          </router-link>
-          <router-link
-              :to="{'name': 'zaima'}"
-              class="text-sm text-gray-600 no-underline hover:text-brand"
-          >在吗
-          </router-link>
-          <router-link
-              :to="{'name': 'resumes', 'params': {'user_id': 'liaozhiming'}}"
-              class="text-sm text-gray-600 no-underline hover:text-brand"
-          >简历
-          </router-link>
+          <ProductGridPopover/>
           <t-link theme="default" hover="color" href="mailto:contact@alsoapp.com">意见反馈</t-link>
         </div>
       </div>
     </nav>
 
     <div class="mx-auto w-full max-w-7xl flex-1 px-4 pt-6">
-      <t-alert theme="info" :close="true" class="mb-4">
-        <template #message>
-          <span class="text-gray-600">常用网站与工具导航，</span>
-          <router-link :to="{'name': 'products'}" class="text-gray-600 hover:text-brand">查看更多产品</router-link>
-        </template>
-      </t-alert>
-
       <!-- 常用链接卡片 -->
       <t-card
           v-for="(item, index) in links"
@@ -105,6 +79,7 @@
 <script setup>
 import {computed, reactive, ref} from "vue";
 import CopyRight from "@/website/components/CopyRight.vue";
+import ProductGridPopover from "@/website/components/ProductGridPopover.vue";
 
 // 图片弹窗数据
 const modal_data = reactive({"image_src_modal": "/static/red-packet-me.png", "header_modal": ""});

@@ -213,11 +213,16 @@ class PostgresRepository:
         self._rls = rls
         # PgBouncer(6432) 事务池模式：关闭自动 prepared statement，否则间歇性
         # 报 `prepared statement "_pg3_x" does not exist`；见 config.pg_connect_kwargs。
+        # check：每次取出连接先做廉价健康检查，远端重启/空闲被断时自动换新连接，
+        # 而不是把 "server closed the connection unexpectedly" 直接抛给接口层。
+        # max_lifetime：远端会回收长生命周期连接，主动轮换比被动踩雷便宜。
         self._pool = ConnectionPool(
             dsn,
             min_size=1,
             max_size=config.pg_pool_max_size(8),
             open=True,
+            check=ConnectionPool.check_connection,
+            max_lifetime=config.pg_pool_max_lifetime(300),
             kwargs=config.pg_connect_kwargs(),
         )
 
@@ -234,6 +239,38 @@ class PostgresRepository:
         if self._rls:
             cur.execute("SELECT set_config('app.user_sub', %s, true)", (user_sub,))
         return cur
+
+    def _pool_conn(self) -> Any:
+        """取连接的 context manager，带一次 PoolTimeout 自动重试。
+
+        远端（公网 PgBouncer）偶发挂起/慢连会让 checkout 阻塞到超时；超时后再取一次
+        （check_connection 会把坏连接换新），避免瞬时抖动直接放大成 500。
+        仅重试「取连接」阶段，查询体不重试（写操作重放不安全，由 CAS 语义兜底）。
+        """
+        from contextlib import contextmanager
+
+        @contextmanager
+        def _cm():
+            from psycopg_pool import PoolTimeout  # 延迟导入，与池创建同源
+
+            from . import config
+
+            timeout = config.pg_pool_timeout(10)
+            try:
+                cm_ = self._pool.connection(timeout=timeout)
+                conn = cm_.__enter__()
+            except PoolTimeout:
+                cm_ = self._pool.connection(timeout=timeout)
+                conn = cm_.__enter__()
+            try:
+                yield conn
+            except BaseException as exc:
+                cm_.__exit__(type(exc), exc, exc.__traceback__)
+                raise
+            else:
+                cm_.__exit__(None, None, None)
+
+        return _cm()
 
     # 统一列顺序：所有 SELECT/RETURNING 都按此清单取值，_row_to_record 对应解析。
     _COLS = "value, schema_version, updated_by_device, revision, created_at, updated_at, deleted_at"
@@ -270,7 +307,7 @@ class PostgresRepository:
             FROM {self._table}
             WHERE user_sub = %s AND tool_id = %s AND key = %s AND deleted_at IS NULL
         """
-        with self._pool.connection() as conn:
+        with self._pool_conn() as conn:
             with self._cursor_for(conn, user_sub) as cur:
                 cur.execute(sql, (user_sub, tool_id, key))
                 row = cur.fetchone()
@@ -286,7 +323,7 @@ class PostgresRepository:
             SELECT key, {self._COLS}
             FROM {self._table} WHERE {where} ORDER BY key
         """
-        with self._pool.connection() as conn:
+        with self._pool_conn() as conn:
             with self._cursor_for(conn, user_sub) as cur:
                 cur.execute(sql, (user_sub, tool_id))
                 rows = cur.fetchall()
@@ -337,7 +374,7 @@ class PostgresRepository:
                 value_json, schema_version, updated_by_device,
                 user_sub, tool_id, key, expected_revision,
             )
-        with self._pool.connection() as conn:
+        with self._pool_conn() as conn:
             with self._cursor_for(conn, user_sub) as cur:
                 cur.execute(sql, params)
                 row = cur.fetchone()
@@ -365,7 +402,7 @@ class PostgresRepository:
               AND revision = %s AND deleted_at IS NULL
             RETURNING {self._COLS}
         """
-        with self._pool.connection() as conn:
+        with self._pool_conn() as conn:
             with self._cursor_for(conn, user_sub) as cur:
                 cur.execute(sql, (user_sub, tool_id, key, expected_revision))
                 row = cur.fetchone()

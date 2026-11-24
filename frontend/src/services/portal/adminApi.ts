@@ -1,7 +1,7 @@
 /** 门户管理 API 客户端：所有请求复用公开的 authHeaders（Bearer + X-User-Sub）。 */
 import type { PortalApp, PortalCategory } from './api.ts'
 import { PortalApiError } from './api.ts'
-import { apiConfigured, cloudConfig, devUserSub } from '@/config.ts'
+import { apiConfigured, cloudConfig, devIdentityOverride, devUserSub } from '@/config.ts'
 import { currentAccessToken, currentSub } from '@/services/auth/logto.ts'
 
 async function adminRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -12,8 +12,10 @@ async function adminRequest<T>(path: string, init: RequestInit = {}): Promise<T>
   }
   const token = await currentAccessToken().catch(() => null)
   if (token) headers.Authorization = `Bearer ${token}`
-  // 真实 Logto 身份优先；仅本地联调（构建期注入 VITE_DEV_USER_SUB）时回退
-  const sub = (await currentSub().catch(() => null)) || devUserSub()
+  // dev server 配置了 VITE_DEV_USER_SUB 时确定性使用它（本地管理后台联调）；
+  // 否则真实 Logto 身份优先，最后才回退 dev sub。生产无该变量，行为不变。
+  const sub =
+    devIdentityOverride() || (await currentSub().catch(() => null)) || devUserSub()
   if (sub) headers['X-User-Sub'] = sub
 
   const res = await fetch(`${cloudConfig().apiBase}${path}`, {

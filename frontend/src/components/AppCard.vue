@@ -54,9 +54,9 @@ function goDetail(): void {
           <t-tag v-if="app.is_featured" size="small" theme="primary" variant="light">推荐</t-tag>
           <LockOnIcon v-if="app.auth_required" size="14px" class="text-ink-3 shrink-0" />
         </div>
-        <div v-if="app.subtitle && !compact" class="text-[12px] text-ink-3 mt-0.5 truncate">{{ app.subtitle }}</div>
-        <p v-if="!compact" class="text-[12.5px] text-ink-2 leading-relaxed mt-2 line-clamp-2">{{ app.description }}</p>
-        <div class="flex items-center gap-2 mt-2.5">
+        <div v-if="app.subtitle && !compact" class="text-[12.5px] text-ink-3 mt-1 truncate">{{ app.subtitle }}</div>
+        <p v-if="!compact" class="text-[13px] text-ink-2 leading-relaxed mt-2.5 line-clamp-2">{{ app.description }}</p>
+        <div class="flex items-center gap-2 mt-3">
           <t-tag size="small" variant="outline">{{ typeLabel }}</t-tag>
           <t-link v-if="!compact" size="small" theme="primary" hover="color" @click.stop="goDetail">详情</t-link>
         </div>
@@ -93,14 +93,14 @@ function goDetail(): void {
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
 }
 .app-card :deep(.t-card__body) {
-  padding: 16px;
+  padding: 20px;
 }
 .app-card--compact :deep(.t-card__body) {
-  padding: 12px;
+  padding: 14px;
 }
 .app-icon {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 12px;
   display: flex;
   align-items: center;

@@ -6,8 +6,8 @@
  *
  * 关键契约（本轮起把「能否登录」与「能否云端同步」解耦）：
  *  - logtoEnabled()    = endpoint + appId + redirectUri 齐全 => 可以走 Logto 登录；
- *  - apiConfigured()   = 有 VITE_API_BASE_URL（缺省回退 DEFAULT_API_BASE_URL）=> 后端云端地址就绪；
- *  - cloudEnabled()    = 两者都齐                            => 完整云端同步可用。
+ *  - apiConfigured()   = 恒 true：显式 VITE_API_BASE_URL（跨源）或未配置（同源相对路径）都可用；
+ *  - cloudEnabled()    = apiConfigured() && logtoEnabled()   => 完整云端同步可用。
  *  这样即使后端地址还没填，用户也能先登录、看到账号态；点云端恢复时得到
  *  「后端地址未配置」的可操作提示，而不是被一个总开关整体隐藏。
  *
@@ -30,8 +30,6 @@ const ENV = ((import.meta as unknown as { env?: ImportMetaEnv }).env ?? {}) as I
  */
 export const DEFAULT_LOGTO_ENDPOINT = 'https://account.alsoapp.com'
 export const DEFAULT_LOGTO_APP_ID = 'plu65e7c0nypndqg7s4hp'
-/** 后端 API 根默认值（可被 VITE_API_BASE_URL 覆盖）。非密钥，内联为默认值开箱即用。 */
-export const DEFAULT_API_BASE_URL = 'https://api.alsoapp.com'
 
 /** 运行时公网基路径（Vite 已注入；hash 路由下 hash 前的前缀，如 /tools/）。 */
 export const PUBLIC_BASE: string = ENV.BASE_URL || '/'
@@ -59,14 +57,20 @@ function trim(v: string | undefined): string {
   return (v ?? '').trim()
 }
 
-/** 构造不带尾斜杠的 API 根（未注入 VITE_API_BASE_URL 时回退 DEFAULT_API_BASE_URL）。 */
+/**
+ * 构造不带尾斜杠的 API 根。
+ *  - 显式设置 VITE_API_BASE_URL（生产 Pages 部署注入 https://api.alsoapp.com）→ 跨源调用；
+ *  - 未设置 → 空字符串，fetch 走相对路径（/v1/...）= 同源调用。
+ *    同源模式下无论页面跑在 127.0.0.1 还是 localhost 还是后端域名，都天然匹配
+ *    当前 origin，不再出现「页面 origin 与注入 API 根不同源被 CORS 拦截」的问题。
+ */
 function apiBase(): string {
-  return trim(ENV.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/+$/, '')
+  return trim(ENV.VITE_API_BASE_URL).replace(/\/+$/, '')
 }
 
-/** 后端云端地址是否已配置（与 Logto 登录解耦）。 */
+/** API 是否可用：显式配置（跨源）或同源模式（后端直接托管）都可用。 */
 export function apiConfigured(): boolean {
-  return !!apiBase()
+  return true
 }
 
 export function cloudConfig(): CloudConfig {
@@ -87,6 +91,18 @@ export function logtoEnabled(): boolean {
  */
 export function devUserSub(): string {
   return trim(ENV.VITE_DEV_USER_SUB)
+}
+
+/**
+ * dev-only 确定性身份覆盖：dev server 下只要配置了 VITE_DEV_USER_SUB 就强制使用，
+ * 不受浏览器 Logto 登录态干扰（否则登录过非管理员账号后，真实身份优先，
+ * 本地管理后台会一直 403，联调体验极差）。
+ *
+ * 仅 import.meta.env.DEV（vite dev server）为真；Node 单测里 ENV 为空对象同样 falsy；
+ * 生产构建没有该变量，本函数恒返回空串，线上行为不变。
+ */
+export function devIdentityOverride(): string {
+  return ENV.DEV ? devUserSub() : ''
 }
 
 /** 是否具备启用云端同步的全部条件（API 地址 + Logto 三件套）。 */

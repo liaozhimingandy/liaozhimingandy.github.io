@@ -18,7 +18,11 @@
 <script setup>
 import {computed} from "vue";
 
+// 构建版本信息:Vite 下经 define 注入 __APP_VERSION__ / __COMMIT_HASH__(见 vite.config.ts),
+// 不可用(如单测环境)时降级为 unknown
 const APP_VERBOSE = computed(() => {
-  return process.env.VUE_APP_VERSION + " | " + process.env.COMMIT_HASH.substring(0, 7);
+  const version = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "unknown";
+  const hash = typeof __COMMIT_HASH__ === "string" ? __COMMIT_HASH__.substring(0, 7) : "";
+  return hash ? `${version} | ${hash}` : version;
 });
 </script>

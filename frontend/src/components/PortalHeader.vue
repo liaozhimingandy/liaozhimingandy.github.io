@@ -66,10 +66,6 @@ function openApp(app: PortalApp): void {
 
     <div class="sp"></div>
 
-    <router-link :to="{ name: 'apps' }" class="no-underline text-[13px] text-ink-2 hover:text-brand hidden sm:inline">
-      应用中心
-    </router-link>
-
     <t-button size="small" variant="text" title="应用切换器" @click="launcherVisible = true">
       <AppIcon size="18px" />
     </t-button>

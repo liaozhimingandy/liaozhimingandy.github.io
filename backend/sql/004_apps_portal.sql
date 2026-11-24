@@ -9,7 +9,8 @@
 --   4. 用户身份 = Logto sub（TEXT），本库不建 users 表、不存密码、不存重复用户资料。
 --   5. 用户私有数据（收藏、最近访问）启用 RLS，应用角色必须 SET LOCAL app.user_sub。
 --   6. open_mode/status/visibility/app_type 用 CHECK 枚举，越界值直接被数据库拒绝。
---   7. launch_url 只接受 http/https，CHECK 阻断 javascript:/data:/file: 等危险协议，
+--   7. launch_url 接受 http/https 绝对地址或以单个 / 开头的本站相对路径，
+--      CHECK 阻断 javascript:/data:/file: 与 protocol-relative（//host）等危险形态，
 --      防开放重定向与 XSS；应用层再做一次更严格校验（双重防线）。
 --   8. 删除应用：关联表带 FK ON DELETE CASCADE，不留孤立数据。
 --
@@ -89,9 +90,12 @@ CREATE TABLE IF NOT EXISTS portal_apps (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT ck_portal_apps_name CHECK (length(btrim(name)) > 0),
-    -- launch_url 为空 = 草稿/开发中，允许；非空必须 http(s) 且带主机
+    -- launch_url 为空 = 草稿/开发中，允许；非空接受 http(s) 绝对地址
+    -- 或本站相对路径（单个 / 开头，// 开头是 protocol-relative 外站地址，拒绝）
     CONSTRAINT ck_portal_apps_launch_url CHECK (
-        launch_url = '' OR launch_url ~* '^https?://[^/\s]+(/.*)?$'
+        launch_url = ''
+        OR launch_url ~* '^https?://[^/\s]+(/.*)?$'
+        OR launch_url ~ '^/([^/\\][^\\]*)?$'
     ),
     CONSTRAINT ck_portal_apps_published CHECK (
         status <> 'published' OR published_at IS NOT NULL
@@ -99,7 +103,7 @@ CREATE TABLE IF NOT EXISTS portal_apps (
 );
 COMMENT ON TABLE portal_apps IS 'Also Apps 门户应用目录；展示与导航数据唯一来源，不含业务授权';
 COMMENT ON COLUMN portal_apps.visibility IS 'public=公开展示；private=仅授权用户可见。展示权限≠业务访问权限';
-COMMENT ON COLUMN portal_apps.launch_url IS '仅允许 http/https 绝对地址；空串表示未部署（草稿）';
+COMMENT ON COLUMN portal_apps.launch_url IS 'http/https 绝对地址，或以单个 / 开头的本站相对路径；空串表示未部署（草稿）';
 CREATE INDEX IF NOT EXISTS ix_portal_apps_listing
     ON portal_apps (status, visibility, sort_order, code);
 CREATE INDEX IF NOT EXISTS ix_portal_apps_home

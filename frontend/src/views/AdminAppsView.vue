@@ -399,7 +399,10 @@ const STATUS_LABEL: Record<string, string> = { draft: '草稿', published: '已�
 
         <t-divider />
         <div class="text-[13px] font-semibold text-ink-2">访问配置</div>
-        <t-form-item label="访问地址"><t-input v-model="form.launch_url" placeholder="https://...（留空表示未部署）" /></t-form-item>
+        <t-form-item label="访问地址">
+          <t-input v-model="form.launch_url" placeholder="https://… 或本站相对路径 /wedesk/（留空表示未部署）" />
+          <template #help>外部产品填完整 http(s) 地址；本站内页填以 / 开头的相对路径，用户打开时按当前域名解析</template>
+        </t-form-item>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <t-form-item label="打开方式">
             <t-select v-model="form.open_mode">
