@@ -6,6 +6,7 @@ import { logtoEnabled } from '@/config.ts'
 import { currentSub, displayUser, signIn, signOut, type DisplayUser } from '@/services/auth/logto.ts'
 import { usePortalStore } from '@/services/portal/store.ts'
 import AppLauncher from '@/components/AppLauncher.vue'
+import BrandMark from '@/components/BrandMark.vue'
 import type { PortalApp } from '@/services/portal/api.ts'
 import { useAppLaunch } from '@/services/portal/useAppLaunch.ts'
 
@@ -54,7 +55,7 @@ function openApp(app: PortalApp): void {
 <template>
   <header class="topbar portal-topbar">
     <router-link :to="{ name: 'home' }" class="brand no-underline">
-      <span class="text-brand">AlsoApps</span>
+      <BrandMark size="18px" />
     </router-link>
 
     <div class="sp"></div>

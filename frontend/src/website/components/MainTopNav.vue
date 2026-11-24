@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center gap-3 px-3 border-b-2 border-gray-300 bg-white">
     <div class="flex flex-1 items-center gap-2">
-      <img class="w-[50px]" src="/favicon.svg" alt="you logo"/>
+      <BrandMark size="20px" />
       <t-input class="w-60" placeholder="搜索ap" disabled/>
     </div>
 
@@ -79,6 +79,7 @@
 import {ref, h, computed, onMounted} from "vue";
 import {MessagePlugin} from 'tdesign-vue-next';
 import {LogoutIcon} from 'tdesign-icons-vue-next';
+import BrandMark from '@/components/BrandMark.vue';
 import {logtoEnabled} from '@/config.ts';
 import {currentSub, displayUser, signIn, signOut} from '@/services/auth/logto.ts';
 

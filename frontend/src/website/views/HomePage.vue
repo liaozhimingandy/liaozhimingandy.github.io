@@ -3,8 +3,7 @@
     <nav class="sticky top-0 z-10 border-b border-gray-200 bg-gray-50">
       <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-2">
         <router-link :to="{'name': 'index'}" class="flex items-center gap-2 no-underline">
-          <img src="/favicon.svg" alt="alsoapp" width="30" height="24">
-          <span class="text-base font-semibold text-gray-700">alsoapp</span>
+          <BrandMark size="18px" />
         </router-link>
         <div class="flex items-center gap-4">
           <ProductGridPopover/>
@@ -80,6 +79,7 @@
 import {computed, reactive, ref} from "vue";
 import CopyRight from "@/website/components/CopyRight.vue";
 import ProductGridPopover from "@/website/components/ProductGridPopover.vue";
+import BrandMark from "@/components/BrandMark.vue";
 
 // 图片弹窗数据
 const modal_data = reactive({"image_src_modal": "/static/red-packet-me.png", "header_modal": ""});

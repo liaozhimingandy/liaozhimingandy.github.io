@@ -7,7 +7,7 @@
             :to="{'name': 'index'}"
             class="flex items-center gap-2 text-base font-semibold text-white no-underline hover:opacity-80"
         >
-          <img src="/favicon.svg" alt="alsoapp" width="24" height="24"/>
+          <BrandMark size="18px" />
           <span>{{ title }}</span>
         </router-link>
         <MyTooltip/>
@@ -27,6 +27,7 @@
 <script setup>
 import MyTooltip from "@/website/components/MyTooltip.vue";
 import CopyRight from "@/website/components/CopyRight.vue";
+import BrandMark from "@/components/BrandMark.vue";
 
 defineProps({
   // 页面标题,展示在吸顶导航左侧

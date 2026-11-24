@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center gap-3 px-3 border-b-2 border-red-500 bg-white">
     <div class="flex flex-1 items-center gap-2">
-      <img class="w-[50px]" src="/favicon.svg" alt="you logo"/>
+      <BrandMark size="20px" />
       <t-input class="w-60" placeholder="Please input" disabled/>
     </div>
 
@@ -36,6 +36,7 @@
 
 <script setup>
 import {HomeIcon, ViewModuleIcon} from 'tdesign-icons-vue-next' // 按需引入 Icon 图标
+import BrandMark from '@/components/BrandMark.vue'
 
 // 账户下拉菜单
 const accountOptions = [
