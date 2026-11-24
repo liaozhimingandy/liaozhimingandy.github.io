@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { StarIcon, StarFilledIcon, LockOnIcon, ChevronLeftIcon, JumpIcon } from 'tdesign-icons-vue-next'
 import PortalHeader from '@/components/PortalHeader.vue'
+import AppSkeleton from '@/components/AppSkeleton.vue'
 import CopyRight from '@/components/CopyRight.vue'
 import { usePortalStore } from '@/services/portal/store.ts'
 import {
@@ -81,7 +82,8 @@ function formatTime(iso: string | null): string {
       <ChevronLeftIcon /> 返回
     </t-button>
 
-    <t-loading :loading="loading" class="min-h-[300px]">
+    <AppSkeleton v-if="loading" variant="detail" />
+    <template v-else>
       <t-alert v-if="error" theme="warning"><template #message>{{ error }}</template></t-alert>
 
       <template v-if="app">
@@ -139,7 +141,7 @@ function formatTime(iso: string | null): string {
           </div>
         </t-card>
       </template>
-    </t-loading>
+    </template>
   </main>
 
   <CopyRight />

@@ -9,6 +9,7 @@ import { useRouter } from 'vue-router'
 import { SearchIcon, StarIcon, HistoryIcon, ArrowRightIcon } from 'tdesign-icons-vue-next'
 import PortalHeader from '@/components/PortalHeader.vue'
 import AppCard from '@/components/AppCard.vue'
+import AppSkeleton from '@/components/AppSkeleton.vue'
 import CopyRight from '@/components/CopyRight.vue'
 import { usePortalStore } from '@/services/portal/store.ts'
 import { addFavorite, removeFavorite } from '@/services/portal/api.ts'
@@ -86,7 +87,8 @@ function goto(code: string): void { void router.push({ name: 'apps', query: { ca
       <template #message>{{ state.error }}。请确认后端服务可用后刷新页面。</template>
     </t-alert>
 
-    <t-loading :loading="state.loading && !state.loaded" size="small" class="min-h-[200px]">
+    <AppSkeleton v-if="state.loading && !state.loaded" variant="grid" :rows="6" :cols="3" />
+    <template v-else>
       <!-- 常用 / 最近（仅登录用户） -->
       <template v-if="authenticated && (favorites.length || recent.length)">
         <section v-if="favorites.length" class="mt-10">
@@ -126,10 +128,10 @@ function goto(code: string): void { void router.push({ name: 'apps', query: { ca
         </div>
       </section>
 
-      <div v-if="!state.apps.length && !state.loading" class="text-center py-16 text-ink-3">
+      <div v-if="!state.apps.length" class="text-center py-16 text-ink-3">
         暂无已发布的应用，请在后台发布后刷新。
       </div>
-    </t-loading>
+    </template>
   </main>
 
   <CopyRight />

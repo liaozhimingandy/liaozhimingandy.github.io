@@ -12,6 +12,7 @@ import {
 import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
 import PortalHeader from '@/components/PortalHeader.vue'
 import CopyRight from '@/components/CopyRight.vue'
+import AppSkeleton from '@/components/AppSkeleton.vue'
 import { adminApi, type AppForm } from '@/services/portal/adminApi.ts'
 import type { PortalApp, PortalCategory } from '@/services/portal/api.ts'
 import { PortalApiError } from '@/services/portal/api.ts'
@@ -210,24 +211,37 @@ const STATUS_LABEL: Record<string, string> = { draft: '草稿', published: '已�
     <t-tabs v-model="activeTab">
       <!-- 应用列表 -->
       <t-tab-panel value="apps" label="应用列表">
-        <div class="flex flex-wrap gap-3 mt-4 mb-3">
-          <t-input v-model="keyword" class="w-[240px]" placeholder="搜索名称/编码" clearable>
-            <template #prefix-icon><SearchIcon /></template>
-          </t-input>
-          <t-select v-model="typeFilter" placeholder="类型" clearable class="w-[140px]">
-            <t-option value="application" label="应用" />
-            <t-option value="tool" label="工具" />
-            <t-option value="game" label="游戏" />
-            <t-option value="service" label="服务" />
-          </t-select>
-          <t-select v-model="statusFilter" placeholder="状态" clearable class="w-[140px]">
-            <t-option value="draft" label="草稿" />
-            <t-option value="published" label="已发布" />
-            <t-option value="disabled" label="已停用" />
-          </t-select>
+        <!-- 筛选区：用原生 div 控制宽度（t-input/t-select 会吞掉自身 class 的宽度，
+             导致各占一整行纵向堆叠），三个控件横向排列并允许窄屏换行 -->
+        <div class="filter-bar">
+          <label class="filter-field filter-field--search">
+            <span class="filter-label">搜索</span>
+            <t-input v-model="keyword" placeholder="名称 / 编码" clearable>
+              <template #prefix-icon><SearchIcon /></template>
+            </t-input>
+          </label>
+          <label class="filter-field filter-field--select">
+            <span class="filter-label">类型</span>
+            <t-select v-model="typeFilter" placeholder="全部类型" clearable>
+              <t-option value="application" label="应用" />
+              <t-option value="tool" label="工具" />
+              <t-option value="game" label="游戏" />
+              <t-option value="service" label="服务" />
+            </t-select>
+          </label>
+          <label class="filter-field filter-field--select">
+            <span class="filter-label">状态</span>
+            <t-select v-model="statusFilter" placeholder="全部状态" clearable>
+              <t-option value="draft" label="草稿" />
+              <t-option value="published" label="已发布" />
+              <t-option value="disabled" label="已停用" />
+            </t-select>
+          </label>
         </div>
 
+        <AppSkeleton v-if="loading" variant="table" :rows="6" :cols="9" />
         <t-table
+          v-else
           :data="filteredApps"
           :columns="[
             { colKey: 'name', title: '应用', width: 190 },
@@ -241,7 +255,6 @@ const STATUS_LABEL: Record<string, string> = { draft: '草稿', published: '已�
             { colKey: 'updated_at', title: '更新时间', width: 170 },
             { colKey: 'op', title: '操作', width: 260, fixed: 'right' },
           ]"
-          :loading="loading"
           row-key="id"
           bordered
           stripe
@@ -314,7 +327,9 @@ const STATUS_LABEL: Record<string, string> = { draft: '草稿', published: '已�
               <t-button theme="primary" class="category-add" @click="addCategory"><AddIcon /> 新增分类</t-button>
             </div>
           </t-card>
+          <AppSkeleton v-if="loading" variant="table" :rows="5" :cols="6" />
           <t-table
+            v-else
             :data="categories"
             :columns="[
               { colKey: 'code', title: '编码', width: 160 },
@@ -345,7 +360,9 @@ const STATUS_LABEL: Record<string, string> = { draft: '草稿', published: '已�
       <t-tab-panel value="homepage" label="首页展示">
         <div class="mt-4">
           <p class="text-[13px] text-ink-3 mb-3">点击星标切换「首页推荐」，用箭头调整排序；保存后立即生效，无需重新构建前端。</p>
+          <AppSkeleton v-if="loading" variant="table" :rows="6" :cols="4" />
           <t-table
+            v-else
             :data="apps"
             :columns="[
               { colKey: 'name', title: '应用', width: 220 },
@@ -481,6 +498,32 @@ const STATUS_LABEL: Record<string, string> = { draft: '草稿', published: '已�
 </template>
 
 <style scoped>
+/* 筛选区：标签在上、控件在下，横向一行排列；宽度加在原生 label 上，
+   避免 TDesign 组件吞掉自身 class 的宽度导致纵向堆叠。窄屏自动换行。 */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 16px 0 16px;
+}
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.filter-field--search { width: 240px; }
+.filter-field--select { width: 150px; }
+.filter-label {
+  font-size: 12px;
+  color: var(--color-ink-3, #9099a8);
+  line-height: 1.4;
+}
+@media (max-width: 640px) {
+  .filter-field--search { flex: 1 1 100%; width: auto; }
+  .filter-field--select { flex: 1 1 45%; width: auto; }
+}
+
 /* 分类新增表单：每个字段 label 在上、控件在下，整行末按钮与控件底部对齐。
    不用 t-form-item：它在非 t-form 容器里自带间距/宽度，flex-wrap 下会把按钮挤到第二行错位。 */
 .category-form {

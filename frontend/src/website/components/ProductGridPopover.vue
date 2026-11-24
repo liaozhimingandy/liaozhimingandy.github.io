@@ -11,6 +11,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { GridViewIcon } from 'tdesign-icons-vue-next'
 import { listApps, type PortalApp } from '@/services/portal/api.ts'
+import { withSourceTag } from '@/services/portal/sourceTag.ts'
 
 interface GridItem {
   name: string
@@ -81,7 +82,7 @@ function open(item: GridItem): void {
     void router.push({ name: item.routeName })
   } else if (item.url) {
     if (item.sameTab && item.url.startsWith('/')) void router.push(item.url)
-    else window.open(item.url, '_blank', 'noopener')
+    else window.open(withSourceTag(item.url), '_blank', 'noopener')
   }
 }
 </script>

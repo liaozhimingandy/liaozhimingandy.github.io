@@ -18,6 +18,7 @@ import {
 } from '@/services/portal/api.ts'
 import { isAuthenticated, signIn } from '@/services/auth/logto.ts'
 import { usePortalStore } from './store.ts'
+import { withSourceTag } from './sourceTag.ts'
 import {
   markLaunchIntent,
   consumeLaunchIntent,
@@ -60,13 +61,15 @@ export function useAppLaunch() {
       await MessagePlugin.warning('该应用尚未开放访问')
       return
     }
-    // 本站相对路径：same_tab 时走 vue-router（SPA 无刷新）；外部地址按 open_mode 打开
+    // 本站相对路径：same_tab 时走 vue-router（SPA 无刷新）；外部地址按 open_mode 打开。
+    // 外部跳转统一带 utm_source=alsoapp.com 供目标站点识别来源；站内路径不加。
     const isInternal = url.startsWith('/')
+    const target = isInternal ? url : withSourceTag(url)
     if (result.open_mode === 'same_tab') {
-      if (isInternal) void router.push(url)
-      else window.location.assign(url)
+      if (isInternal) void router.push(target)
+      else window.location.assign(target)
     } else {
-      window.open(url, '_blank', 'noopener,noreferrer')
+      window.open(target, '_blank', 'noopener,noreferrer')
     }
   }
 

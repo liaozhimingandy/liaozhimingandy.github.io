@@ -10,6 +10,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { SearchIcon } from 'tdesign-icons-vue-next'
 import PortalHeader from '@/components/PortalHeader.vue'
 import AppListItem from '@/components/AppListItem.vue'
+import AppSkeleton from '@/components/AppSkeleton.vue'
 import CopyRight from '@/components/CopyRight.vue'
 import { usePortalStore } from '@/services/portal/store.ts'
 import { searchApps, type PortalApp } from '@/services/portal/api.ts'
@@ -157,7 +158,8 @@ function clearFilters(): void {
       </button>
     </div>
 
-    <t-loading :loading="state.loading && !state.loaded" size="small" class="min-h-[200px]">
+    <AppSkeleton v-if="state.loading && !state.loaded" variant="grid" :rows="8" :cols="4" />
+    <template v-else>
       <!-- 百度式分组：新上线 + 各分类小节 -->
       <section v-for="g in groups" :key="g.title" class="group-section">
         <div class="flex items-center gap-2 mb-4">
@@ -169,10 +171,10 @@ function clearFilters(): void {
         </div>
       </section>
 
-      <div v-if="!filtered.length && !state.loading" class="text-center py-16 text-ink-3">
+      <div v-if="!filtered.length" class="text-center py-16 text-ink-3">
         没有找到匹配的应用。<t-link theme="primary" @click="clearFilters">清除筛选</t-link>
       </div>
-    </t-loading>
+    </template>
   </main>
 
   <CopyRight />
