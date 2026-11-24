@@ -22,7 +22,7 @@
               </li>
               <li class="flex gap-2">
                 <CheckCircleIcon size="16px" fill-color="#00a870" class="mt-1 shrink-0"/>
-                <span>托管方 GitHub 与 CDN 服务商 Cloudflare 会记录必要的服务器访问日志，用于安全防护;</span>
+                <span>本系统会记录必要的服务器访问日志，用于安全防护;</span>
               </li>
               <li class="flex gap-2">
                 <CheckCircleIcon size="16px" fill-color="#00a870" class="mt-1 shrink-0"/>
@@ -63,7 +63,7 @@
           <div class="space-y-2">
             <p>
               <b class="font-semibold">1、服务器访问日志。</b>
-              当您访问本网站时，站点托管服务商 GitHub Pages 与 CDN / 安全防护服务商 Cloudflare
+              当您访问本网站时，站点托管服务商和 CDN / 安全防护服务商
               会自动记录您的 IP 地址、浏览器类型与版本、操作系统、访问时间、请求的页面等日志信息，用于保障服务安全与排查故障。
             </p>
             <p>
@@ -91,7 +91,7 @@
         <section id="section-3">
           <h2 class="mb-3 text-lg font-semibold text-gray-800">三、Cookie 与同类技术</h2>
           <p>
-            本网站自身不设置用于追踪的 Cookie。为提供安全防护与流量统计，Cloudflare
+            本网站自身不设置用于追踪的 Cookie。为提供安全防护与流量统计，站点托管服务商
             可能设置安全验证类 Cookie（如 <code class="rounded bg-gray-100 px-1">__cf_bm</code>），百度统计会设置统计类 Cookie。
           </p>
           <p class="mt-2">
@@ -107,7 +107,7 @@
           <ul class="mt-2 list-disc space-y-1.5 pl-6">
             <li>
               <b class="font-semibold">服务提供商:</b>
-              GitHub（站点托管）、Cloudflare（CDN 与安全防护）、百度统计（流量分析）。上述服务商依据其各自的隐私政策处理数据，我们已与其约定必要的数据保护义务;
+              站点托管、CDN 与安全防护、百度统计（流量分析）。上述服务商依据其各自的隐私政策处理数据，我们已与其约定必要的数据保护义务;
             </li>
             <li>
               <b class="font-semibold">法律法规:</b>
@@ -123,7 +123,7 @@
         <section id="section-5">
           <h2 class="mb-3 text-lg font-semibold text-gray-800">五、数据存储与安全</h2>
           <p>
-            本网站部署于 GitHub Pages，服务器日志等数据可能存储于中国境外（如美国）的服务器;数据在网络传输过程中均使用
+            本网站部署于阿里云，服务器日志等数据可能存储于中国境外（如美国）的服务器;数据在网络传输过程中均使用
             HTTPS 加密。我们将尽商业上合理的努力保障信息安全，防止信息遭到未经授权的访问、篡改或泄露。
           </p>
           <p class="mt-2">

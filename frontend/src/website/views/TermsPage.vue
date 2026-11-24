@@ -50,13 +50,13 @@
         <h2 id="section-1" class="mt-4 text-base font-semibold text-gray-800">一、服务说明</h2>
         <p class="mt-2 text-sm leading-6 text-gray-600">
           alsoapp.com(下称"本站")是 Also Apps 的官方站点,提供产品介绍、应用导航与在线工具服务。
-          本站的部分能力(如锦囊 SafeKeep 的云端同步)依赖第三方基础设施(GitHub、Cloudflare 等),
+          本站的部分能力(如锦囊 SafeKeep 的云端同步)依赖第三方基础设施(阿里云等),
           相应服务可能受其服务状态影响。
         </p>
 
         <h2 id="section-2" class="mt-6 text-base font-semibold text-gray-800">二、账号与安全</h2>
         <p class="mt-2 text-sm leading-6 text-gray-600">
-          需要登录的服务统一使用 Also Account(Logto)认证。您应妥善保管账号凭据,并对账号下的操作负责。
+          需要登录的服务统一使用 Also Account(账户中心)认证。您应妥善保管账号凭据,并对账号下的操作负责。
           发现账号被盗用时,请及时通过 contact@alsoapp.com 与我们联系。
         </p>
 
