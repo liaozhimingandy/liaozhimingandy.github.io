@@ -16,7 +16,8 @@ WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# 应用代码与 SQL 迁移脚本（迁移由 compose 的 init 服务或运维手动执行）
+# 应用入口与代码、SQL 迁移脚本（迁移由 compose 的 init 服务或运维手动执行）
+COPY main.py /app/main.py
 COPY app/ /app/app/
 COPY sql/ /app/sql/
 
@@ -34,4 +35,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:'+__import__('os').environ.get('AP_PORT','8080')+'/v1/health', timeout=4).status==200 else 1)" || exit 1
 
-CMD ["python", "-m", "app.main"]
+CMD ["python", "main.py"]

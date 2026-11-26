@@ -2,25 +2,24 @@
 
 所有接口强制管理员校验（require_admin 依赖），配置为空时 fail-closed。
 管理端可以读写草稿/私有/停用应用，这是与普通用户目录的唯一差别。
+分层：路由只做参数校验与权限注入；业务在 portal/service.py。
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Query
 
-from .portal_api import _api_error, _handle_domain_error, get_portal_repository, require_admin
-from .portal_models import (
-    APP_STATUSES,
-    APP_TYPES,
-    OPEN_MODES,
-    VISIBILITIES,
-    AppRecord,
-    CategoryRecord,
-    with_updated,
+from .core.config import get_settings
+from .portal.models import APP_STATUSES, APP_TYPES, OPEN_MODES, VISIBILITIES
+from .portal_api import (
+    _api_error,
+    _handle_domain_error,
+    get_portal_service,
+    require_admin,
 )
-from .portal_store import PortalRepository, validate_launch_url
+from .portal.service import PortalService
 
 router = APIRouter()
 
@@ -43,11 +42,6 @@ def _app_payload(body: dict[str, Any]) -> dict[str, Any]:
     for key in ("subtitle", "description", "detail", "icon_url", "cover_url"):
         if key in result and not isinstance(result[key], str):
             raise _api_error(422, "VALIDATION_ERROR", f"{key} 必须是字符串")
-    if "launch_url" in result:
-        try:
-            result["launch_url"] = validate_launch_url(str(result["launch_url"]))
-        except Exception as exc:
-            _handle_domain_error(exc)
     for key, values in (
         ("app_type", APP_TYPES), ("open_mode", OPEN_MODES),
         ("status", APP_STATUSES), ("visibility", VISIBILITIES),
@@ -64,34 +58,33 @@ def _app_payload(body: dict[str, Any]) -> dict[str, Any]:
 
 
 @router.get("/v1/portal/admin/apps", tags=["portal-admin"])
-def admin_list_apps(
+async def admin_list_apps(
     keyword: str = Query(default="", max_length=100),
     status: str = Query(default=""),
     app_type: str = Query(default=""),
     category: str = Query(default=""),
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
     if status and status not in APP_STATUSES:
         raise _api_error(422, "VALIDATION_ERROR", "status 取值非法")
     if app_type and app_type not in APP_TYPES:
         raise _api_error(422, "VALIDATION_ERROR", "app_type 取值非法")
-    rows = repo.list_apps(
-        status=status or None,
-        category=category or None,
-        keyword=keyword,
-        include_private=True,
-    )
-    if app_type:
-        rows = [a for a in rows if a.app_type == app_type]
-    return {"items": [a.to_public() for a in rows], "total": len(rows)}
+    try:
+        rows = await svc.admin_list_apps(
+            status=status or None, app_type=app_type or None,
+            category=category or None, keyword=keyword,
+        )
+    except Exception as exc:
+        _handle_domain_error(exc)
+    return {"items": rows, "total": len(rows)}
 
 
 @router.post("/v1/portal/admin/apps", tags=["portal-admin"])
-def admin_create_app(
+async def admin_create_app(
     body: dict[str, Any],
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
     code = str(body.get("code", "")).strip().upper()
     if not code or len(code) > 64 or not all(c.isalnum() or c == "_" for c in code):
@@ -101,105 +94,106 @@ def admin_create_app(
         raise _api_error(422, "VALIDATION_ERROR", "categories 必须是字符串数组")
     payload = _app_payload({k: v for k, v in body.items() if k != "categories"})
     payload.setdefault("name", code)
-    # PG 有约束 ck_portal_apps_published：status=published 必须有 published_at。
-    # 经 with_updated 统一填发布时间与责任人，不能裸构造 AppRecord 直接 INSERT。
-    app = with_updated(
-        AppRecord(code=code, **payload),
-        created_by=admin.sub, updated_by=admin.sub,
-    )
     try:
-        created = repo.create_app(app, tuple(categories))
+        created = await svc.admin_create_app(
+            {**payload, "code": code}, tuple(categories), admin.sub)
     except Exception as exc:
         _handle_domain_error(exc)
-    return {"ok": True, "app": created.to_public()}  # type: ignore[possibly-undefined]
+    return {"ok": True, "app": created}
 
 
 @router.get("/v1/portal/admin/apps/{app_id}", tags=["portal-admin"])
-def admin_get_app(
+async def admin_get_app(
     app_id: str,
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
-    app = repo.get_app_by_id(app_id)
+    try:
+        app = await svc.get_app_by_id(app_id)
+    except Exception as exc:
+        _handle_domain_error(exc)
     if not app:
         raise _api_error(404, "APP_NOT_FOUND", "应用不存在")
-    return {"app": app.to_public()}
+    return {"app": await svc.decorate_app(app)}
 
 
 @router.put("/v1/portal/admin/apps/{app_id}", tags=["portal-admin"])
-def admin_update_app(
+async def admin_update_app(
     app_id: str,
     body: dict[str, Any],
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
     payload = _app_payload(body)
+    categories: tuple[str, ...] | None = None
+    if "categories" in body:
+        cats = body["categories"]
+        if not isinstance(cats, list) or not all(isinstance(c, str) for c in cats):
+            raise _api_error(422, "VALIDATION_ERROR", "categories 必须是字符串数组")
+        categories = tuple(cats)
     try:
-        updated = repo.update_app(app_id, **payload)
-        if "categories" in body:
-            cats = body["categories"]
-            if not isinstance(cats, list) or not all(isinstance(c, str) for c in cats):
-                raise _api_error(422, "VALIDATION_ERROR", "categories 必须是字符串数组")
-            updated = repo.set_app_categories(app_id, tuple(cats))
+        updated = await svc.admin_update_app(app_id, payload, categories)
     except Exception as exc:
         _handle_domain_error(exc)
-    return {"ok": True, "app": updated.to_public()}  # type: ignore[possibly-undefined]
+    return {"ok": True, "app": updated}
 
 
 @router.delete("/v1/portal/admin/apps/{app_id}", tags=["portal-admin"])
-def admin_delete_app(
+async def admin_delete_app(
     app_id: str,
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
     try:
-        repo.delete_app(app_id)
+        await svc.admin_delete_app(app_id)
     except Exception as exc:
         _handle_domain_error(exc)
     return {"ok": True}
 
 
 @router.post("/v1/portal/admin/apps/{app_id}/publish", tags=["portal-admin"])
-def admin_publish_app(
+async def admin_publish_app(
     app_id: str,
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
     try:
-        app = repo.update_app(app_id, status="published", updated_by=admin.sub)
+        app = await svc.admin_update_app(
+            app_id, {"status": "published", "updated_by": admin.sub})
     except Exception as exc:
         _handle_domain_error(exc)
-    return {"ok": True, "app": app.to_public()}  # type: ignore[possibly-undefined]
+    return {"ok": True, "app": app}
 
 
 @router.post("/v1/portal/admin/apps/{app_id}/disable", tags=["portal-admin"])
-def admin_disable_app(
+async def admin_disable_app(
     app_id: str,
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
     try:
-        app = repo.update_app(app_id, status="disabled", updated_by=admin.sub)
+        app = await svc.admin_update_app(
+            app_id, {"status": "disabled", "updated_by": admin.sub})
     except Exception as exc:
         _handle_domain_error(exc)
-    return {"ok": True, "app": app.to_public()}  # type: ignore[possibly-undefined]
+    return {"ok": True, "app": app}
 
 
 # --------------------------------------------------------------------------- # 分类管理
 @router.get("/v1/portal/admin/categories", tags=["portal-admin"])
-def admin_list_categories(
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+async def admin_list_categories(
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
-    rows = repo.list_categories(enabled_only=False)
-    return {"items": [c.to_public() for c in rows], "total": len(rows)}
+    rows = await svc.list_categories(enabled_only=False)
+    return {"items": rows, "total": len(rows)}
 
 
 @router.post("/v1/portal/admin/categories", tags=["portal-admin"])
-def admin_create_category(
+async def admin_create_category(
     body: dict[str, Any],
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
     code = str(body.get("code", "")).strip()
     name = str(body.get("name", "")).strip()
@@ -208,47 +202,47 @@ def admin_create_category(
     status = body.get("status", "enabled")
     if status not in ("enabled", "disabled"):
         raise _api_error(422, "VALIDATION_ERROR", "status 取值非法")
-    category = CategoryRecord(
-        code=code, name=name,
-        description=str(body.get("description", "")),
-        icon=str(body.get("icon", "")),
-        parent_id=body.get("parent_id"),
-        sort_order=int(body.get("sort_order", 0)),
-        status=status,
-    )
     try:
-        created = repo.create_category(category)
+        created = await svc.admin_create_category({
+            "code": code,
+            "name": name,
+            "description": str(body.get("description", "")),
+            "icon": str(body.get("icon", "")),
+            "parent_id": body.get("parent_id"),
+            "sort_order": int(body.get("sort_order", 0)),
+            "status": status,
+        })
     except Exception as exc:
         _handle_domain_error(exc)
-    return {"ok": True, "category": created.to_public()}  # type: ignore[possibly-undefined]
+    return {"ok": True, "category": created}
 
 
 @router.put("/v1/portal/admin/categories/{category_id}", tags=["portal-admin"])
-def admin_update_category(
+async def admin_update_category(
     category_id: str,
     body: dict[str, Any],
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
     allowed = {"name", "description", "icon", "parent_id", "sort_order", "status"}
     payload = {k: v for k, v in body.items() if k in allowed}
     if "status" in payload and payload["status"] not in ("enabled", "disabled"):
         raise _api_error(422, "VALIDATION_ERROR", "status 取值非法")
     try:
-        updated = repo.update_category(category_id, **payload)
+        updated = await svc.admin_update_category(category_id, payload)
     except Exception as exc:
         _handle_domain_error(exc)
-    return {"ok": True, "category": updated.to_public()}  # type: ignore[possibly-undefined]
+    return {"ok": True, "category": updated}
 
 
 @router.delete("/v1/portal/admin/categories/{category_id}", tags=["portal-admin"])
-def admin_delete_category(
+async def admin_delete_category(
     category_id: str,
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
     try:
-        repo.delete_category(category_id)
+        await svc.admin_delete_category(category_id)
     except Exception as exc:
         _handle_domain_error(exc)
     return {"ok": True}
@@ -256,16 +250,16 @@ def admin_delete_category(
 
 # --------------------------------------------------------------------------- # 首页展示管理
 @router.put("/v1/portal/admin/homepage", tags=["portal-admin"])
-def admin_set_homepage(
+async def admin_set_homepage(
     body: dict[str, Any],
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
     """批量配置首页展示：{items:[{id, show_on_home, is_featured, sort_order}]}。"""
     items = body.get("items")
     if not isinstance(items, list) or len(items) > 200:
         raise _api_error(422, "VALIDATION_ERROR", "items 必须是数组且不超过 200 项")
-    updated: list[dict[str, Any]] = []
+    normalized: list[dict[str, Any]] = []
     for item in items:
         if not isinstance(item, dict) or not isinstance(item.get("id"), str):
             raise _api_error(422, "VALIDATION_ERROR", "每项必须有 id")
@@ -275,25 +269,21 @@ def admin_set_homepage(
                 raise _api_error(422, "VALIDATION_ERROR", f"{key} 必须是布尔值")
         if "sort_order" in changes and not isinstance(changes["sort_order"], int):
             raise _api_error(422, "VALIDATION_ERROR", "sort_order 必须是整数")
-        try:
-            app = repo.update_app(item["id"], **changes)
-        except Exception as exc:
-            _handle_domain_error(exc)
-        updated.append(app.to_public())  # type: ignore[possibly-undefined]
+        normalized.append({"id": item["id"], **changes})
+    try:
+        updated = await svc.admin_set_homepage(normalized)
+    except Exception as exc:
+        _handle_domain_error(exc)
     return {"ok": True, "items": updated}
 
 
 # --------------------------------------------------------------------------- # 访问记录（聚合视图，不返回 user_sub）
 @router.get("/v1/portal/admin/visits", tags=["portal-admin"])
-def admin_visits(
+async def admin_visits(
     limit: int = Query(default=50, ge=1, le=500),
-    repo: PortalRepository = Depends(get_portal_repository),
-    admin=Depends(require_admin),
+    svc: PortalService = Depends(get_portal_service),
+    admin: Any = Depends(require_admin),
 ) -> dict[str, Any]:
-    """管理员看访问统计：由仓储提供聚合；当前内存实现返回空列表，PG 可扩展。
-
-    不返回 user_sub（避免个人信息泄露），只返回应用维度统计。
-    """
-    getter = getattr(repo, "visit_summary", None)
-    items = getter(limit) if callable(getter) else []
+    """管理员看访问统计：应用维度聚合，不返回 user_sub。"""
+    items = await svc.admin_visits(limit)
     return {"items": items, "total": len(items)}

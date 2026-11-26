@@ -4,7 +4,7 @@
 # 本项目实际情况（与原通用模板不同，改动前务必核对）：
 #   - Dockerfile 在 backend/Dockerfile，构建上下文必须是 ./backend
 #     （COPY requirements.txt / app/ / sql/ 都相对 backend/），不是仓库根。
-#   - 镜像内只有 /app/app/main.py、/app/sql/、/app/requirements.txt；
+#   - 镜像内只有 /app/main.py、/app/sql/、/app/requirements.txt；
 #     没有 VERSION 文件、没有 src/、没有前端 dist（前端由 GitHub Pages 托管）。
 #   - 镜像只提供 /v1/* API；容器内是 HTTP :8080，HTTPS 由 api.alsoapp.com
 #     反向代理终结 TLS 后再转到容器，不需要把证书塞进镜像。
@@ -411,7 +411,7 @@ jobs:
 
           # 镜像内文件布局按 backend/Dockerfile：app/、sql/、requirements.txt
           docker run --rm --entrypoint sh "${REF}" -c \
-            'test -f /app/app/main.py && test -f /app/app/config.py && test -f /app/sql/001_tool_configs.sql && test -f /app/requirements.txt'
+            'test -f /app/main.py && test -f /app/app/config.py && test -f /app/sql/001_tool_configs.sql && test -f /app/requirements.txt'
           echo "镜像内文件布局校验通过"
 
           CID="$(docker run -d --rm -p 18080:8080 "${REF}")"

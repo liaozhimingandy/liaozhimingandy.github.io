@@ -3,8 +3,9 @@
 职责严格限定为三类，绝不接触用户数据明文：
   1. 托管 Vite 构建产物（前端 SPA），并提供 history 路由回退；
   2. 提供元信息接口（health/version/auth-mode）与「工具注册表」API（全局元数据）；
-  3. 提供「公共配置表」API（用户密文配置的云端存取）。
-
+  3. 提供「公共配置表」API（用户密文配置的云端存取）；
+  4. 提供 article 流水线 API（自媒体热点采集/聚合/文章生成，见 article_api.py，
+     后台调度在 lifespan 启停，可用 ARTICLE_SCHEDULER_ENABLED=0 关闭）。
 零知识边界：公共配置表存的 value 是不透明密文 blob。后端不定义账户/条目明文模型、
 不解密、不解析 value 内容、不记录明文，也不接触用户密钥。所有加解密在浏览器端完成。
 schema_version 仅透传 value 内部结构版本、updated_by_device 仅记录设备标识，二者都不涉及明文。
@@ -27,28 +28,50 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import config, runtime
-from .configs import router as configs_router
-from .portal_api import router as portal_router
-from .portal_admin_api import router as portal_admin_router
-from .portal_models import PortalError
-from .schemas import APP_ERROR_CODES, HealthResponse, ServiceStatus, VersionResponse
+from app import config, runtime
+from app.article import scheduler as article_scheduler
+from app.article_api import router as article_router
+from app.configs import router as configs_router
+from app.portal_api import router as portal_router
+from app.portal_admin_api import router as portal_admin_router
+from app.portal.models import PortalError
+from app.schemas import APP_ERROR_CODES, HealthResponse, ServiceStatus, VersionResponse
 
 API_PREFIX = "/v1"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """启动装配依赖、打印就绪信息；关停释放连接池。不加载任何用户数据。"""
+    """启动装配依赖、自动建表与种子；关停释放引擎。不加载任何用户数据。
+
+    数据层：portal/article 全部走 core.database 的 SQLModel 异步引擎，
+    init_db() 用 SQLModel.metadata.create_all 创建不存在的表（幂等，无 DDL 文件）；
+    Postgres 不可达时降级 SQLite 内存库（数据不落盘，服务不拒绝启动）。
+    """
     runtime.wire(app)
     ready = config.dist_index_exists()
+    # article 流水线：SQLModel 自动建表，再启动采集/聚合两个 asyncio 周期任务
+    from app.core import database
+    from app.portal.service import PortalService
+    from app.core.database import session_factory
+
+    if not await database.init_db():
+        print("[db] 数据库不可用，已降级 SQLite 内存库（数据不落盘）")
+    # 门户种子：幂等（按 code 缺席才插入），空库/内存库生效，已迁移的 PG 表自动跳过
+    async with session_factory()() as session:
+        await PortalService(session).seed_if_empty()
+    store_label = config.store_backend()
     print(
         f"[tools] frontend_ready={ready} dist={config.DIST_DIR} "
-        f"store={app.state.store_backend} auth={app.state.auth_provider.mode} "
-        f"tools={len(app.state.tool_repository.list(enabled_only=True))}"
+        f"store={store_label} auth={app.state.auth_provider.mode}"
     )
+    if config.article_scheduler_enabled():
+        await article_scheduler.start()
+    else:
+        print("[article-scheduler] 已通过 ARTICLE_SCHEDULER_ENABLED=0 关闭")
     yield
-    runtime.teardown(app)
+    await article_scheduler.stop()
+    await database.dispose_engine()
 
 
 app = FastAPI(
@@ -148,6 +171,9 @@ app.include_router(configs_router)
 app.include_router(portal_router)
 app.include_router(portal_admin_router)
 
+# 自媒体热点文章流水线（话题选择 -> 生成任务 -> 文章查询）
+app.include_router(article_router)
+
 
 # --------------------------------------------------------------------------- #
 # 静态资源与 SPA 回退（放最后，避免吞掉 API 路由）
@@ -203,11 +229,11 @@ def spa_fallback(full_path: str):
 
 
 def main() -> None:
-    """本地启动入口：python -m app.main。仅监听回环地址。"""
+    """本地启动入口：python main.py（或 uvicorn main:app）。仅监听回环地址。"""
     import uvicorn
 
     uvicorn.run(
-        "app.main:app",
+        "main:app",
         host=config.bind_host(),
         port=config.bind_port(),
         reload=False,

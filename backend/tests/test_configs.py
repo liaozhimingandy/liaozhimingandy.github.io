@@ -1,24 +1,23 @@
 """公共配置表 + 鉴权 + API 契约测试（unittest 标准库 + FastAPI TestClient）。
 
 覆盖：
-  - 存储层：CRUD、乐观锁 CAS、软删除、多租户/多工具隔离、零知识（value 原样存取且不解析）。
+  - 存储层：CAS 乐观锁、软删除、多租户/多工具隔离、零知识（value 原样存取且不解析）。
   - 鉴权层：user_sub 唯一来自 provider；dev 头缺失拒绝；stub 固定身份；Logto fail-closed。
   - API 层：响应 schema 稳定、ETag、配额、错误码统一、越权不可指定他人身份、
             /v1/auth/mode 风险提示、旧元信息接口回归。
-测试不依赖真实 PG、真实 JWT 租户或真实时钟。
+测试不依赖真实 PG、真实 JWT 租户或真实时钟：数据层走 SQLite 内存引擎
+（与生产共用同一套 SQLModel/DAL/Service 代码路径）。
 """
 
 from __future__ import annotations
 
 import unittest
+from unittest import mock
 
 from fastapi.testclient import TestClient
 
 from app.auth import DevHeaderProvider, LogtoJWTProvider, StubProvider, UnauthorizedError
-from app.main import app
-from app.store import ConflictError, MemoryRepository, NotFoundError
-from app.tools_registry import MemoryToolRepository, ToolRecord
-
+from tests.helpers import api_client, patch_env, seed_app
 
 # 一个典型的「零知识密文 blob」：只有 iv/ct/salt 等密封字段，没有明文
 CIPHER_BLOB = {
@@ -35,99 +34,19 @@ CIPHER_BLOB = {
 }
 
 
-class TestMemoryRepository(unittest.TestCase):
-    def setUp(self) -> None:
-        self.repo = MemoryRepository()
-
-    def test_create_get_roundtrip_preserves_ciphertext_verbatim(self) -> None:
-        """零知识核心：value 原样存取，存储层不解析、不改写内部结构。"""
-        rec = self.repo.put("userA", "safekeep", "vault", CIPHER_BLOB, expected_revision=0)
-        self.assertEqual(rec.revision, 1)
-        got = self.repo.get("userA", "safekeep", "vault")
-        self.assertEqual(got.value, CIPHER_BLOB)
-        self.assertIn("ct", got.value["items"]["id-1"])  # 密文字段完好
-
-    def test_first_create_rejects_overwrite(self) -> None:
-        self.repo.put("u", "safekeep", "k", {"a": 1}, expected_revision=0)
-        with self.assertRaises(ConflictError) as ctx:
-            self.repo.put("u", "safekeep", "k", {"a": 2}, expected_revision=0)
-        self.assertEqual(ctx.exception.actual, 1)
-
-    def test_cas_update_and_conflict(self) -> None:
-        r1 = self.repo.put("u", "safekeep", "k", {"v": 1}, expected_revision=0)
-        r2 = self.repo.put("u", "safekeep", "k", {"v": 2}, expected_revision=r1.revision)
-        self.assertEqual(r2.revision, 2)
-        with self.assertRaises(ConflictError):
-            self.repo.put("u", "safekeep", "k", {"v": 3}, expected_revision=r1.revision)  # 用旧版本
-
-    def test_soft_delete_hides_from_get_and_list(self) -> None:
-        r = self.repo.put("u", "safekeep", "k", {"x": 1}, expected_revision=0)
-        self.repo.delete("u", "safekeep", "k", expected_revision=r.revision)
-        with self.assertRaises(NotFoundError):
-            self.repo.get("u", "safekeep", "k")
-        self.assertEqual(self.repo.list("u", "safekeep"), [])
-        rows = self.repo.list("u", "safekeep", include_deleted=True)
-        self.assertEqual(len(rows), 1)
-        self.assertIsNotNone(rows[0].deleted_at)
-
-    def test_tenant_and_tool_isolation(self) -> None:
-        self.repo.put("userA", "safekeep", "k", {"who": "A"}, expected_revision=0)
-        self.repo.put("userB", "safekeep", "k", {"who": "B"}, expected_revision=0)
-        self.repo.put("userA", "othertool", "k", {"who": "A-other"}, expected_revision=0)
-        self.assertEqual(self.repo.get("userA", "safekeep", "k").value["who"], "A")
-        self.assertEqual(self.repo.get("userB", "safekeep", "k").value["who"], "B")
-        self.assertEqual(len(self.repo.list("userA", "safekeep")), 1)
-        self.assertEqual(len(self.repo.list("userA", "othertool")), 1)
-
-    def test_no_user_table_no_plaintext_model_in_store(self) -> None:
-        """存储层不感知用户表，也不定义任何明文条目模型。"""
-        import inspect
-        import app.store as store_mod
-
-        src = inspect.getsource(store_mod)
-        self.assertNotIn("class User", src)
-        self.assertNotIn("password", src.lower())  # 无明文密码字段模型
-
-    def test_schema_version_and_device_roundtrip_orthogonal_to_revision(self) -> None:
-        """schema_version（value 结构版本）与 revision（并发版本）正交，软删保留元信息。"""
-        r1 = self.repo.put(
-            "u", "safekeep", "k", {"ct": "a"}, expected_revision=0,
-            schema_version=3, updated_by_device="edge-win",
-        )
-        self.assertEqual((r1.schema_version, r1.revision, r1.updated_by_device), (3, 1, "edge-win"))
-        # 只改 value 结构版本，不动 revision 语义（仍按 CAS +1）
-        r2 = self.repo.put(
-            "u", "safekeep", "k", {"ct": "b"}, expected_revision=1,
-            schema_version=4, updated_by_device="iphone",
-        )
-        self.assertEqual((r2.schema_version, r2.revision), (4, 2))
-        # 软删保留上一个 schema_version / device，仅墓碑 + revision
-        r3 = self.repo.delete("u", "safekeep", "k", expected_revision=2)
-        self.assertEqual((r3.schema_version, r3.updated_by_device, r3.revision), (4, "iphone", 3))
-        # 默认值：不传时为 1 / None
-        d = self.repo.put("u", "safekeep", "d", {"x": 1}, expected_revision=0)
-        self.assertEqual((d.schema_version, d.updated_by_device), (1, None))
+def _with_safekeep(auth_provider):
+    """标准配置测试环境：stub 身份 + 已发布的 SAFEKEEP 应用（工具准入权威）。"""
+    return api_client(
+        seed_fixtures=False,
+        auth_provider=auth_provider,
+    )
 
 
-class TestMemoryToolRepository(unittest.TestCase):
-    def test_seed_list_get_exists_enabled(self) -> None:
-        r = MemoryToolRepository()
-        self.assertTrue(r.exists_enabled("safekeep"))
-        self.assertFalse(r.exists_enabled("ghost"))
-        self.assertEqual([t.tool_id for t in r.list()], ["safekeep"])
-        self.assertIsNotNone(r.get("safekeep"))
-
-    def test_disabled_and_sort_order_and_all(self) -> None:
-        r = MemoryToolRepository([])
-        r.seed(
-            ToolRecord("zeta", "Z", "", "", True, 20, None, None, "s", "s"),
-            ToolRecord("alpha", "A", "", "", True, 1, None, None, "s", "s"),
-            ToolRecord("old", "O", "", "", False, 5, None, None, "s", "s"),
-        )
-        self.assertEqual([t.tool_id for t in r.list()], ["alpha", "zeta"])  # 禁用被过滤，按序
-        self.assertEqual([t.tool_id for t in r.list(enabled_only=False)], ["alpha", "old", "zeta"])
-        self.assertFalse(r.exists_enabled("old"))  # 禁用 = 不准入
-        self.assertIsNotNone(r.get("old"))  # 但 get 仍可见（管理端可区分 404/禁用）
+def _seed_safekeep(**extra) -> None:
+    seed_app(
+        code="SAFEKEEP", name="锦囊", status="published", visibility="public",
+        **extra,
+    )
 
 
 class TestAuthProviders(unittest.TestCase):
@@ -154,28 +73,17 @@ class TestAuthProviders(unittest.TestCase):
             p.authenticate(headers={"authorization": "Basic abc"})
 
 
-class _BaseAPITest(unittest.TestCase):
-    """替换 app.state 为测试装配，避免触碰真实存储/鉴权。"""
+class TestConfigAPI(unittest.TestCase):
+    """配置 API 契约：身份固定 stub "test-user"。"""
 
     def setUp(self) -> None:
-        self.repo = MemoryRepository()
-        self.provider = StubProvider("test-user")
-        self.registry = MemoryToolRepository()  # 含 safekeep 种子
-        app.state.auth_provider = self.provider
-        app.state.repository = self.repo
-        app.state.tool_repository = self.registry
-        app.state.logto_configured = False
-        app.state.store_backend = "memory"
-        self.client = TestClient(app)
+        self._cm = _with_safekeep(StubProvider("test-user"))
+        self.client = self._cm.__enter__()
+        _seed_safekeep()
 
     def tearDown(self) -> None:
-        # 恢复默认装配，避免影响其他测试类
-        app.state.auth_provider = StubProvider("test-user")
-        app.state.repository = MemoryRepository()
-        app.state.tool_repository = MemoryToolRepository()
+        self._cm.__exit__(None, None, None)
 
-
-class TestConfigAPI(_BaseAPITest):
     def test_list_empty(self) -> None:
         r = self.client.get("/v1/configs/safekeep")
         self.assertEqual(r.status_code, 200)
@@ -212,6 +120,13 @@ class TestConfigAPI(_BaseAPITest):
         self.assertEqual(conflict.json()["error"], "REVISION_CONFLICT")
         self.assertEqual(conflict.json()["detail"]["actual"], 2)
 
+    def test_first_create_rejects_overwrite(self) -> None:
+        self.client.put("/v1/configs/safekeep/k", json={"value": {"a": 1}, "expected_revision": 0})
+        again = self.client.put("/v1/configs/safekeep/k", json={"value": {"a": 2}, "expected_revision": 0})
+        self.assertEqual(again.status_code, 409)
+        self.assertEqual(again.json()["error"], "REVISION_CONFLICT")
+        self.assertEqual(again.json()["detail"]["actual"], 1)
+
     def test_delete_soft_and_requires_revision(self) -> None:
         self.client.put("/v1/configs/safekeep/k", json={"value": {"v": 1}, "expected_revision": 0})
         missing_rev = self.client.delete("/v1/configs/safekeep/k")
@@ -220,11 +135,13 @@ class TestConfigAPI(_BaseAPITest):
         self.assertEqual(d.status_code, 200)
         self.assertIsNotNone(d.json()["deleted_at"])
         self.assertEqual(self.client.get("/v1/configs/safekeep/k").status_code, 404)
+        rows = self.client.get("/v1/configs/safekeep?include_deleted=true").json()["items"]
+        self.assertEqual(len(rows), 1)
 
-    def test_cross_user_and_cross_tool_isolation_via_api(self) -> None:
+    def test_cross_user_isolation_via_api(self) -> None:
         self.client.put("/v1/configs/safekeep/k", json={"value": {"secret": "x"}, "expected_revision": 0})
         # 切到另一个 stub 身份
-        app.state.auth_provider = StubProvider("another-user")
+        self.client.app.state.auth_provider = StubProvider("another-user")
         self.assertEqual(self.client.get("/v1/configs/safekeep").json()["count"], 0)
         self.assertEqual(self.client.get("/v1/configs/safekeep/k").status_code, 404)
 
@@ -234,9 +151,11 @@ class TestConfigAPI(_BaseAPITest):
             "/v1/configs/safekeep/k?user_id=victim",
             json={"value": {"v": 1}, "expected_revision": 0, "user_id": "victim", "user_sub": "victim"},
         )
-        self.assertIsNotNone(self.repo.get("test-user", "safekeep", "k"))
-        with self.assertRaises(NotFoundError):
-            self.repo.get("victim", "safekeep", "k")
+        g = self.client.get("/v1/configs/safekeep/k")
+        self.assertEqual(g.status_code, 200)
+        # victim 身份下取不到
+        self.client.app.state.auth_provider = StubProvider("victim")
+        self.assertEqual(self.client.get("/v1/configs/safekeep/k").status_code, 404)
 
     def test_invalid_ids_and_value_size(self) -> None:
         self.assertEqual(self.client.put("/v1/configs/BAD!/k", json={"value": 1, "expected_revision": 0}).status_code, 400)
@@ -246,10 +165,6 @@ class TestConfigAPI(_BaseAPITest):
         self.assertEqual(r.status_code, 413)
         self.assertEqual(r.json()["error"], "VALUE_TOO_LARGE")
 
-    def test_unserializable_value_rejected(self) -> None:
-        r = self.client.put("/v1/configs/safekeep/k", json={"value": "ok", "expected_revision": 0})
-        self.assertEqual(r.status_code, 200)
-
     def test_quota_endpoint(self) -> None:
         r = self.client.get("/v1/configs/safekeep/_quota")
         self.assertEqual(r.status_code, 200)
@@ -258,17 +173,13 @@ class TestConfigAPI(_BaseAPITest):
 
     def test_unknown_tool_404_when_whitelist_set(self) -> None:
         """环境变量白名单是注册表之上的第二道门：注册表中存在但白名单排除 → 404。"""
-        import app.config as cfg
-        from unittest import mock
-
-        self.registry.seed(ToolRecord("notes", "便签", "", "", True, 0, None, None, "s", "s"))
-        with mock.patch.object(cfg, "allowed_tool_ids", return_value={"safekeep"}):
-            r = self.client.get("/v1/configs/notes")
+        with patch_env(AP_TOOL_IDS="safekeep"):
+            r = self.client.get("/v1/configs/ghosttool")
         self.assertEqual(r.status_code, 404)
         self.assertEqual(r.json()["error"], "TOOL_NOT_FOUND")
 
     def test_missing_dev_header_returns_401_when_dev_mode(self) -> None:
-        app.state.auth_provider = DevHeaderProvider()
+        self.client.app.state.auth_provider = DevHeaderProvider()
         r = self.client.get("/v1/configs/safekeep")
         self.assertEqual(r.status_code, 401)
         self.assertEqual(r.json()["error"], "UNAUTHORIZED")
@@ -318,9 +229,9 @@ class TestConfigAPI(_BaseAPITest):
         )
 
     def test_registry_gate_blocks_unregistered_and_disabled_tools(self) -> None:
-        """注册表是工具准入权威：未注册 / 已禁用 → 404。"""
+        """注册表是工具准入权威：未注册 / 已停用（draft）→ 404。"""
         self.assertEqual(self.client.get("/v1/configs/ghosttool").status_code, 404)
-        self.registry.seed(ToolRecord("retired", "退役", "", "", False, 0, None, None, "s", "s"))
+        seed_app(code="RETIRED", name="退役", status="draft")
         self.assertEqual(self.client.get("/v1/configs/retired").status_code, 404)
         self.assertEqual(
             self.client.put(
@@ -329,49 +240,29 @@ class TestConfigAPI(_BaseAPITest):
             404,
         )
 
-    def test_tool_quota_overrides_global_defaults(self) -> None:
-        """注册表的非 NULL 配额覆盖全局；配额/大小上限都生效。"""
-        self.registry.seed(ToolRecord("safekeep", "锦囊", "", "", True, 10, 2, 16, "s", "s"))
-        q = self.client.get("/v1/configs/safekeep/_quota").json()
-        self.assertEqual((q["max_keys"], q["max_value_bytes"]), (2, 16))
-        self.client.put("/v1/configs/safekeep/k1", json={"value": {"x": 1}, "expected_revision": 0})
-        self.client.put("/v1/configs/safekeep/k2", json={"value": {"x": 1}, "expected_revision": 0})
-        # 第 3 个 key 触发配额上限
-        r = self.client.put("/v1/configs/safekeep/k3", json={"value": {"x": 1}, "expected_revision": 0})
+    def test_quota_exceeded_enforced(self) -> None:
+        """AP_MAX_KEYS 配额：超出后新建返回 409 QUOTA_EXCEEDED。"""
+        with patch_env(AP_MAX_KEYS="2"):
+            self.client.put("/v1/configs/safekeep/k1", json={"value": {"x": 1}, "expected_revision": 0})
+            self.client.put("/v1/configs/safekeep/k2", json={"value": {"x": 1}, "expected_revision": 0})
+            r = self.client.put("/v1/configs/safekeep/k3", json={"value": {"x": 1}, "expected_revision": 0})
         self.assertEqual(r.status_code, 409)
         self.assertEqual(r.json()["error"], "QUOTA_EXCEEDED")
-        # 单条大小超工具覆盖上限 16 字节
-        big = self.client.put(
-            "/v1/configs/safekeep/k", json={"value": "x" * 100, "expected_revision": 0}
-        )
-        self.assertEqual(big.status_code, 413)
 
 
-class TestPortalToolRegistry(unittest.TestCase):
-    """生产实现：准入以 portal_apps 为权威（published ≙ enabled）。"""
+class TestToolsAPI(unittest.TestCase):
+    """/v1/tools：以 portal_apps 为权威（published ≙ enabled）。"""
 
-    def test_portal_backed_registry(self) -> None:
-        from app.portal_store import MemoryPortalRepository
-        from app.tools_registry import PortalToolRegistry
+    def setUp(self) -> None:
+        self._cm = _with_safekeep(StubProvider("test-user"))
+        self.client = self._cm.__enter__()
+        _seed_safekeep()
+        seed_app(code="ALSO_TOOLS", name="Also Tools", status="draft")
 
-        reg = PortalToolRegistry(MemoryPortalRepository())
-        # SAFEKEEP 种子已发布：大小写不敏感准入
-        self.assertTrue(reg.exists_enabled("safekeep"))
-        self.assertTrue(reg.exists_enabled("SAFEKEEP"))
-        self.assertFalse(reg.exists_enabled("ghosttool"))
-        # ALSO_TOOLS 种子保持草稿：不可准入
-        draft = reg.get("also_tools")
-        self.assertIsNotNone(draft)
-        self.assertFalse(draft.enabled)
-        self.assertFalse(reg.exists_enabled("also_tools"))
-        # list 只含 published，且已映射为 ToolRecord
-        items = reg.list()
-        self.assertTrue(items and all(t.enabled for t in items))
-        self.assertEqual(reg.get("safekeep").name, "锦囊 SafeKeep")
+    def tearDown(self) -> None:
+        self._cm.__exit__(None, None, None)
 
-
-class TestToolsAPI(_BaseAPITest):
-    def test_list_tools_returns_enabled_seed(self) -> None:
+    def test_list_tools_returns_published_only(self) -> None:
         r = self.client.get("/v1/tools")
         self.assertEqual(r.status_code, 200)
         body = r.json()
@@ -383,11 +274,11 @@ class TestToolsAPI(_BaseAPITest):
         r = self.client.get("/v1/tools/safekeep")
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json()["name"], "锦囊")
-        self.registry.seed(ToolRecord("gone", "下架", "", "", False, 0, None, None, "s", "s"))
+        self.assertEqual(self.client.get("/v1/tools/also_tools").status_code, 404)  # draft 不准入
         self.assertEqual(self.client.get("/v1/tools/gone").status_code, 404)
 
     def test_tools_requires_auth(self) -> None:
-        app.state.auth_provider = DevHeaderProvider()
+        self.client.app.state.auth_provider = DevHeaderProvider()
         self.assertEqual(self.client.get("/v1/tools").status_code, 401)
         self.assertEqual(
             self.client.get("/v1/tools", headers={"X-User-Sub": "bob"}).status_code, 200
@@ -405,7 +296,14 @@ class TestToolsAPI(_BaseAPITest):
         )
 
 
-class TestAuthModeAndRegression(_BaseAPITest):
+class TestAuthModeAndRegression(unittest.TestCase):
+    def setUp(self) -> None:
+        self._cm = _with_safekeep(StubProvider("test-user"))
+        self.client = self._cm.__enter__()
+
+    def tearDown(self) -> None:
+        self._cm.__exit__(None, None, None)
+
     def test_auth_mode_exposes_risk(self) -> None:
         r = self.client.get("/v1/auth/mode")
         self.assertEqual(r.status_code, 200)
@@ -415,8 +313,8 @@ class TestAuthModeAndRegression(_BaseAPITest):
         self.assertIsNotNone(body["warning"])
 
     def test_auth_mode_secure_when_logto_configured(self) -> None:
-        app.state.auth_provider = LogtoJWTProvider(issuer="https://x/oidc", audience="api", jwks_url="https://x/jwks")
-        app.state.logto_configured = True
+        self.client.app.state.auth_provider = LogtoJWTProvider(
+            issuer="https://x/oidc", audience="api", jwks_url="https://x/jwks")
         body = self.client.get("/v1/auth/mode").json()
         self.assertEqual(body["mode"], "logto")
         self.assertTrue(body["secure"])
@@ -430,4 +328,4 @@ class TestAuthModeAndRegression(_BaseAPITest):
 
 
 if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    unittest.main()

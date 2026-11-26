@@ -1,0 +1,43 @@
+[project]
+name = "backend"
+version = "0.4.0"
+description = "AP backend: static SPA host + zero-knowledge config store + article pipeline"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.165.0",
+    "langchain-openai>=1.8.5",
+    "langgraph>=1.2.24",
+    "langgraph-checkpoint-postgres>=2.0",  # LangGraph 检查点存 Postgres
+    "psycopg[binary,pool]>=3.2",      # Postgres 驱动（业务库 + 检查点共用）
+    "pydantic-settings>=2.7",         # Settings 单例（.env 自动加载）
+    "sqlmodel>=0.0.24",               # 表模型 + SQLModel.metadata.create_all 自动建表
+    "aiosqlite>=0.21",                # SQLite 异步驱动（memory 降级 / 测试）
+    "python-dotenv>=1.2.4",
+    "sqlalchemy[asyncio]>=2.1.9",
+    "uvicorn>=0.54.0",
+]
+
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
+
+[project.optional-dependencies]
+# article 流水线的采集/聚合依赖（uv sync --extra article）。
+# 均做了优雅降级：缺哪个，对应能力关闭，不影响 API 服务启动。
+article = [
+    "requests>=2.32",
+    "trafilatura>=2.0",       # 正文提取（采集核心依赖，缺失则采集阶段跳过）
+    "lxml>=5.0",              # <title> 兜底提取（可选）
+    "numpy>=2.0",             # 聚合向量精判（可选，缺失只用 SimHash）
+    "simhash>=2.1",           # SimHash 外部实现（可选，有内置 fallback）
+    "pillow>=10.0",           # 图片 logo/横幅识别（可选）
+]
+# jieba（标题相关性分词）：无 py3.13 轮子、源码构建不稳定，且代码已有
+# 字符二元组降级路径，故不进默认 extra。需要时手动：
+#   uv pip install jieba
+# 重量级向量模型（torch 等），只在需要 embedding 精判时安装：
+# uv sync --extra article --extra ml
+ml = [
+    "sentence-transformers>=3.0",  # all-MiniLM-L6-v2 向量模型
+]

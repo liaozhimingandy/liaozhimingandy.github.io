@@ -107,6 +107,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/website/views/ResumePage.vue'),
     meta: { title: '简历信息', website: true },
   },
+    {
+    path: '/article/preview/',
+    name: 'article_preview',
+    component: () => import('@/views/ArticlePreview.vue'),
+    meta: { title: 'AI文章预览', website: true },
+  },
   {
     path: '/privacy/',
     name: 'privacy',

@@ -16,8 +16,9 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from app import config
-from app.main import app, spa_fallback
+from main import app, spa_fallback
 from app.schemas import HealthResponse, ServiceStatus, VersionResponse
+from tests.helpers import patch_env
 
 
 class TestMetaEndpoints(unittest.TestCase):
@@ -124,7 +125,7 @@ class TestRoutingContract(unittest.TestCase):
             (dist / "index.html").write_text("<title>spa</title>", encoding="utf-8")
             with (
                 mock.patch.object(config, "DIST_DIR", dist),
-                mock.patch.dict(os.environ, {"AP_PUBLIC_PATH": "/tools/"}),
+                patch_env(AP_PUBLIC_PATH="/tools/"),
             ):
                 asset = spa_fallback("tools/assets/app.js")
                 landing = spa_fallback("tools/")
@@ -145,7 +146,7 @@ class TestRoutingContract(unittest.TestCase):
             secret.write_text("TOP-SECRET", encoding="utf-8")
             with (
                 mock.patch.object(config, "DIST_DIR", dist),
-                mock.patch.dict(os.environ, {"AP_PUBLIC_PATH": "/tools/"}),
+                patch_env(AP_PUBLIC_PATH="/tools/"),
             ):
                 resp = spa_fallback("tools/../secret.txt")
         # 穿越被拒 → 回退 index.html（FileResponse 按 path 直出，不读 body）

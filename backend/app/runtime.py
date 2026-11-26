@@ -1,18 +1,19 @@
-"""运行期装配：按配置把鉴权 provider 与存储仓库注入 app.state。
+"""运行期装配：把鉴权 provider 注入 app.state。
 
-这样做的好处：
+数据层不再走仓储注入：portal/article 全部经 Depends(get_session) ->
+Service -> DAO（core.database 统一异步引擎），app.state 只保留鉴权 provider。
+
+好处：
   - main.py 不 import psycopg/PyJWT 的具体类，可选依赖缺席时应用照常启动；
-  - 测试可直接替换 app.state.auth_provider / repository，无需 mock 全局；
-  - 切换 dev→logto、memory→postgres 只改环境变量，零代码改动。
+  - 测试可直接替换 app.state.auth_provider，无需 mock 全局；
+  - 切换 dev→logto、内存库→postgres 只改环境变量，零代码改动。
 """
 
 from __future__ import annotations
 
-from . import auth, config
+from . import config
 from .auth import AuthProvider, LogtoJWTProvider
-from .store import ConfigRepository, MemoryRepository
-from .tools_registry import PortalToolRegistry, ToolRepository
-from .portal_store import PortalRepository, build_repository as build_portal_repository
+from .auth import build_provider as _build_provider
 
 
 def build_auth_provider() -> AuthProvider:
@@ -22,7 +23,7 @@ def build_auth_provider() -> AuthProvider:
             audience=config.logto_audience(),
             jwks_url=config.logto_jwks_url(),
         )
-    return auth.build_provider(
+    return _build_provider(
         mode=config.auth_mode(),
         dev_header=config.dev_auth_header(),
         passthrough_header=config.dev_auth_header(),
@@ -30,60 +31,17 @@ def build_auth_provider() -> AuthProvider:
     )
 
 
-def build_repository() -> ConfigRepository:
-    if config.store_backend() == "postgres":
-        dsn = config.database_url()
-        if not dsn:
-            # fail-closed：显式选了 postgres 却不给 DSN，直接拒绝启动，
-            # 而不是悄悄退回内存导致「以为落库了其实没落」。
-            raise RuntimeError("AP_STORE=postgres 但 AP_DATABASE_URL 为空")
-        from .store import PostgresRepository
-
-        return PostgresRepository(dsn)
-    return MemoryRepository()
-
-
-def build_tools(portal: PortalRepository) -> ToolRepository:
-    """工具准入注册表：以 portal_apps 为唯一数据源（tools 表已下线）。
-
-    直接包装门户仓储，复用同一连接池，不再单独建 tools 池。
-    """
-    return PortalToolRegistry(portal)
-
-
-def build_portal(dsn: str | None) -> PortalRepository:
-    """Also Apps 门户仓储：与公共配置表共用 AP_STORE / DSN 配置。"""
-    return build_portal_repository(dsn)
-
-
-def dsn_if_needed() -> str | None:
-    """仅 postgres 模式返回 DSN；空 DSN 由 build_repository 统一 fail-closed。"""
-    if config.store_backend() != "postgres":
-        return None
-    return config.database_url()
-
-
 def logto_configured(provider: AuthProvider) -> bool:
     return isinstance(provider, LogtoJWTProvider) and provider.configured
 
 
 def wire(app) -> None:
-    """把依赖挂到 app.state，供 API 路由通过 request.app.state 取用。"""
+    """把鉴权依赖挂到 app.state，供 API 路由通过 request.app.state 取用。"""
     provider = build_auth_provider()
-    repo = build_repository()
-    portal = build_portal(dsn_if_needed())
     app.state.auth_provider = provider
-    app.state.repository = repo
-    app.state.portal_repository = portal
-    app.state.tool_repository = build_tools(portal)
     app.state.logto_configured = logto_configured(provider)
-    app.state.store_backend = config.store_backend()
 
 
 def teardown(app) -> None:
-    """关停时释放各连接池等资源。"""
-    for attr in ("repository", "tool_repository", "portal_repository"):
-        obj = getattr(app.state, attr, None)
-        close = getattr(obj, "close", None)
-        if callable(close):
-            close()
+    """关停钩子：鉴权 provider 无需释放，保留以兼容既有调用。"""
+    return None

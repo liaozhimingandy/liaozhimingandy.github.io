@@ -4,134 +4,68 @@
   新增/编辑/删除应用、发布下架、首页推荐配置、分类筛选、关键词搜索、
   收藏/取消、最近访问、匿名与登录浏览、私有应用拦截、非法 URL 校验、
   越权（指定他人身份无效）、管理员白名单 fail-closed、URL 安全。
-测试不依赖真实 PG、真实 Logto 租户或真实时钟。
+测试不依赖真实 PG、真实 Logto 租户或真实时钟：数据层走 SQLite 内存引擎
+（与生产共用同一套 SQLModel/DAL/Service 代码路径）。
 """
 
 from __future__ import annotations
 
-import os
 import unittest
-from contextlib import contextmanager
-from typing import Iterator
 
-from fastapi.testclient import TestClient
-
-from app.auth import DevHeaderProvider
-from app.main import app
+from app.portal.models import ValidationError, validate_launch_url
 from app.portal_ids import uuid7
-from app.portal_models import AppRecord, CategoryRecord, ValidationError
-from app.portal_store import MemoryPortalRepository, validate_launch_url
-from app.store import MemoryRepository
-from app.tools_registry import MemoryToolRepository
-
-ADMIN_SUB = "admin-sub"
-USER_A = "user-a"
-USER_B = "user-b"
-
-
-def admin_headers() -> dict[str, str]:
-    return {"X-User-Sub": ADMIN_SUB}
+from tests.helpers import (
+    USER_A,
+    USER_B,
+    admin_headers,
+    api_client,
+    get_app_id_by_code,
+    user_headers,
+)
 
 
-def user_headers(sub: str = USER_A) -> dict[str, str]:
-    return {"X-User-Sub": sub}
-
-
-class PortalApiTestBase(unittest.TestCase):
-    """每个用例注入隔离的内存仓储与 stub 鉴权，避免测试间互相污染。"""
-
-    def setUp(self) -> None:
-        self.repo = MemoryPortalRepository(seed=False)
-        self.repo.seed(
-            AppRecord(
-                code="PUB", name="公开应用", status="published", visibility="public",
-                launch_url="https://example.com/pub", published_at="2026-01-01T00:00:00Z",
-                sort_order=10, categories=("all",),
-            ),
-            AppRecord(
-                code="DRAFT", name="草稿应用", status="draft", visibility="public",
-                categories=("all",),
-            ),
-            AppRecord(
-                code="PRIVATE", name="私有应用", status="published", visibility="private",
-                launch_url="https://example.com/priv", published_at="2026-01-01T00:00:00Z",
-                categories=("all",),
-            ),
-            AppRecord(
-                code="AUTH", name="需登录应用", status="published", visibility="public",
-                auth_required=True, launch_url="https://example.com/auth",
-                published_at="2026-01-01T00:00:00Z", categories=("all",),
-            ),
-            categories=(
-                CategoryRecord(code="all", name="全部应用"),
-                CategoryRecord(code="ai", name="AI 工具", sort_order=10),
-            ),
-        )
-
-    @contextmanager
-    def client(self, admin_config: str = ADMIN_SUB) -> Iterator[TestClient]:
-        old_admin = os.environ.get("PORTAL_ADMIN_SUBS")
-        os.environ["PORTAL_ADMIN_SUBS"] = admin_config
-        try:
-            with TestClient(app) as c:
-                c.app.state.portal_repository = self.repo
-                # 用 dev 头模式替代默认 passthrough：无头即 401，才能真实模拟「未登录」
-                c.app.state.auth_provider = DevHeaderProvider()
-                yield c
-        finally:
-            if old_admin is None:
-                os.environ.pop("PORTAL_ADMIN_SUBS", None)
-            else:
-                os.environ["PORTAL_ADMIN_SUBS"] = old_admin
-
-    def app_id(self, code: str) -> str:
-        app = self.repo.get_app_by_code(code)
-        assert app is not None
-        return app.id
-
-
-class TestPublicCatalog(PortalApiTestBase):
+class TestPublicCatalog(unittest.TestCase):
     def test_anonymous_sees_only_published_public(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             res = c.get("/v1/portal/apps")
             self.assertEqual(res.status_code, 200)
             codes = set(a["code"] for a in res.json()["items"])
             self.assertEqual(codes, {"PUB", "AUTH"})  # DRAFT/PRIVATE 不可见
 
     def test_private_app_detail_hidden(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             self.assertEqual(c.get("/v1/portal/apps/PRIVATE").status_code, 404)
             self.assertEqual(c.get("/v1/portal/apps/DRAFT").status_code, 404)
 
     def test_keyword_search_covers_code_and_name(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             self.assertEqual(c.get("/v1/portal/apps/search?q=PUB").json()["total"], 1)
             self.assertEqual(c.get("/v1/portal/apps/search?q=公开").json()["total"], 1)
             self.assertEqual(c.get("/v1/portal/apps/search?q=nope").json()["total"], 0)
 
     def test_category_filter_and_query_params(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             res = c.get("/v1/portal/apps?category=ai")
             self.assertEqual(res.json()["total"], 0)  # 种子应用都不属于 ai
             res = c.get("/v1/portal/apps?category=all")
             self.assertEqual(res.json()["total"], 2)
 
     def test_pagination(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             res = c.get("/v1/portal/apps?page=1&page_size=1")
             self.assertEqual(len(res.json()["items"]), 1)
             self.assertEqual(res.json()["total"], 2)
 
 
-class TestLaunch(PortalApiTestBase):
+class TestLaunch(unittest.TestCase):
     def test_published_app_launch_allowed(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             res = c.post("/v1/portal/apps/PUB/launch")
             self.assertTrue(res.json()["allowed"])
             self.assertEqual(res.json()["url"], "https://example.com/pub")
 
     def test_auth_required_app_needs_login(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             res = c.post("/v1/portal/apps/AUTH/launch")
             self.assertFalse(res.json()["allowed"])
             self.assertEqual(res.json()["reason"], "LOGIN_REQUIRED")
@@ -139,12 +73,12 @@ class TestLaunch(PortalApiTestBase):
             self.assertTrue(res.json()["allowed"])
 
     def test_private_app_forbidden_even_logged_in(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             res = c.post("/v1/portal/apps/PRIVATE/launch", headers=user_headers())
             self.assertEqual(res.status_code, 403)
 
     def test_not_deployed_app_blocked(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             admin = admin_headers()
             c.post(
                 "/v1/portal/admin/apps", headers=admin,
@@ -155,10 +89,10 @@ class TestLaunch(PortalApiTestBase):
             self.assertEqual(res.json()["reason"], "NOT_DEPLOYED")
 
 
-class TestUserFeatures(PortalApiTestBase):
+class TestUserFeatures(unittest.TestCase):
     def test_favorite_add_list_duplicate_remove(self) -> None:
-        aid = self.app_id("PUB")
-        with self.client() as c:
+        with api_client() as c:
+            aid = get_app_id_by_code("PUB")
             h = user_headers()
             self.assertEqual(c.post(f"/v1/portal/me/favorites/{aid}", headers=h).status_code, 200)
             self.assertEqual(len(c.get("/v1/portal/me/favorites", headers=h).json()["items"]), 1)
@@ -167,18 +101,18 @@ class TestUserFeatures(PortalApiTestBase):
             self.assertEqual(len(c.get("/v1/portal/me/favorites", headers=h).json()["items"]), 0)
 
     def test_user_cannot_see_others_favorites(self) -> None:
-        aid = self.app_id("PUB")
-        with self.client() as c:
+        with api_client() as c:
+            aid = get_app_id_by_code("PUB")
             c.post(f"/v1/portal/me/favorites/{aid}", headers=user_headers(USER_A))
             self.assertEqual(len(c.get("/v1/portal/me/favorites", headers=user_headers(USER_B)).json()["items"]), 0)
 
     def test_favorite_requires_login(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             self.assertEqual(c.get("/v1/portal/me/favorites").status_code, 401)
 
     def test_recent_accumulates_and_limits(self) -> None:
-        aid = self.app_id("PUB")
-        with self.client() as c:
+        with api_client() as c:
+            aid = get_app_id_by_code("PUB")
             h = user_headers()
             for _ in range(3):
                 c.post(f"/v1/portal/me/recent/{aid}", headers=h)
@@ -188,8 +122,8 @@ class TestUserFeatures(PortalApiTestBase):
 
     def test_body_user_id_cannot_override_identity(self) -> None:
         """尝试在 body 指定 user_sub 不改变归属——身份只来自 header。"""
-        aid = self.app_id("PUB")
-        with self.client() as c:
+        with api_client() as c:
+            aid = get_app_id_by_code("PUB")
             c.post(
                 f"/v1/portal/me/favorites/{aid}",
                 headers=user_headers(USER_A),
@@ -199,15 +133,15 @@ class TestUserFeatures(PortalApiTestBase):
             self.assertEqual(len(c.get("/v1/portal/me/favorites", headers=user_headers(USER_B)).json()["items"]), 0)
 
 
-class TestAdmin(PortalApiTestBase):
+class TestAdmin(unittest.TestCase):
     def test_admin_whitelist_fail_closed(self) -> None:
-        with self.client(admin_config="") as c:
+        with api_client(admin_config="") as c:
             self.assertEqual(c.get("/v1/portal/admin/apps", headers=admin_headers()).status_code, 403)
-        with self.client() as c:
+        with api_client() as c:
             self.assertEqual(c.get("/v1/portal/admin/apps", headers=user_headers()).status_code, 403)
 
     def test_create_edit_publish_disable_delete(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             h = admin_headers()
             created = c.post(
                 "/v1/portal/admin/apps", headers=h,
@@ -234,10 +168,9 @@ class TestAdmin(PortalApiTestBase):
     def test_create_published_app_sets_published_at(self) -> None:
         """PG 约束 ck_portal_apps_published 要求发布态必须有 published_at。
 
-        创建接口必须经 with_updated 统一补时间，不能裸构造 AppRecord 直接 INSERT，
-        否则本地内存库测试通过、线上 PG 报 500。
+        创建路径必须自动补发布时间，否则本地内存库测试通过、线上 PG 报 500。
         """
-        with self.client() as c:
+        with api_client() as c:
             res = c.post(
                 "/v1/portal/admin/apps", headers=admin_headers(),
                 json={
@@ -252,7 +185,7 @@ class TestAdmin(PortalApiTestBase):
 
     def test_offline_soon_flag_roundtrip(self) -> None:
         """「即将下线」标识需能被管理接口写入并公开返回，默认关闭。"""
-        with self.client() as c:
+        with api_client() as c:
             res = c.post(
                 "/v1/portal/admin/apps", headers=admin_headers(),
                 json={
@@ -285,7 +218,7 @@ class TestAdmin(PortalApiTestBase):
     def test_dangerous_launch_url_rejected(self) -> None:
         for bad in ("javascript:alert(1)", "data:text/html,x", "//evil.com/x", "https://u:p@example.com"):
             with self.subTest(bad=bad):
-                with self.client() as c:
+                with api_client() as c:
                     res = c.post(
                         "/v1/portal/admin/apps", headers=admin_headers(),
                         json={"code": "BAD", "name": "危险地址", "launch_url": bad},
@@ -293,9 +226,9 @@ class TestAdmin(PortalApiTestBase):
                     self.assertEqual(res.status_code, 422)
 
     def test_homepage_recommendation_takes_effect_immediately(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             h = admin_headers()
-            aid = self.app_id("DRAFT")
+            aid = get_app_id_by_code("DRAFT")
             res = c.put(
                 "/v1/portal/admin/homepage", headers=h,
                 json={"items": [{"id": aid, "show_on_home": True, "is_featured": True, "sort_order": 1}]},
@@ -307,7 +240,7 @@ class TestAdmin(PortalApiTestBase):
             self.assertEqual(c.get("/v1/portal/apps?home=true").json()["total"], 1)
 
     def test_category_crud_and_delete_detaches(self) -> None:
-        with self.client() as c:
+        with api_client() as c:
             h = admin_headers()
             created = c.post(
                 "/v1/portal/admin/categories", headers=h,
@@ -319,11 +252,27 @@ class TestAdmin(PortalApiTestBase):
             self.assertEqual(c.delete(f"/v1/portal/admin/categories/{cid}", headers=h).status_code, 200)
             self.assertEqual(c.get("/v1/portal/admin/categories", headers=h).json()["total"], 2)
 
+    def test_delete_app_cascades_favorites_and_visits(self) -> None:
+        with api_client() as c:
+            h = admin_headers()
+            created = c.post(
+                "/v1/portal/admin/apps", headers=h,
+                json={"code": "CASCADE", "name": "级联", "status": "published",
+                      "launch_url": "https://x.example"},
+            )
+            aid = created.json()["app"]["id"]
+            c.post(f"/v1/portal/me/favorites/{aid}", headers=user_headers())
+            c.post(f"/v1/portal/me/recent/{aid}", headers=user_headers())
+            self.assertEqual(len(c.get("/v1/portal/me/favorites", headers=user_headers()).json()["items"]), 1)
+            self.assertEqual(c.delete(f"/v1/portal/admin/apps/{aid}", headers=h).status_code, 200)
+            self.assertEqual(len(c.get("/v1/portal/me/favorites", headers=user_headers()).json()["items"]), 0)
+            self.assertEqual(len(c.get("/v1/portal/me/recent", headers=user_headers()).json()["items"]), 0)
 
-class TestMyCapabilities(PortalApiTestBase):
+
+class TestMyCapabilities(unittest.TestCase):
     def test_capabilities_follow_admin_whitelist(self) -> None:
         """前端据此决定显示后台入口：匿名/普通用户false，白名单用户true，空白名单fail-closed。"""
-        with self.client() as c:
+        with api_client() as c:
             anon = c.get("/v1/portal/me/capabilities")
             self.assertEqual(anon.status_code, 200)
             self.assertEqual(anon.json(), {
@@ -341,7 +290,7 @@ class TestMyCapabilities(PortalApiTestBase):
             })
 
         # 白名单为空时即便头部声称是管理员也必须 false（与管理接口 fail-closed 一致）
-        with self.client(admin_config="") as c:
+        with api_client(admin_config="") as c:
             fail_closed = c.get("/v1/portal/me/capabilities", headers=admin_headers()).json()
             self.assertEqual(fail_closed["is_admin"], False)
             self.assertEqual(fail_closed["can_manage_apps"], False)
@@ -365,17 +314,6 @@ class TestDomainHelpers(unittest.TestCase):
         for bad in ("//evil.com/x", "/a\\b", "relative/no-slash", "/ path with space"):
             with self.assertRaises(ValidationError):
                 validate_launch_url(bad)
-
-    def test_delete_app_cascades_favorites_and_visits(self) -> None:
-        repo = MemoryPortalRepository(seed=False)
-        app = AppRecord(code="X", name="X", status="published", launch_url="https://x.example")
-        created = repo.create_app(app)
-        repo.add_favorite("u", created.id)
-        repo.record_visit("u", created.id)
-        self.assertEqual(len(repo.list_favorites("u")), 1)
-        repo.delete_app(created.id)
-        self.assertEqual(len(repo.list_favorites("u")), 0)
-        self.assertEqual(len(repo.list_recent("u")), 0)
 
 
 if __name__ == "__main__":
