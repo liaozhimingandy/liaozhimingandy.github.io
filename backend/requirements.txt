@@ -1,9 +1,25 @@
-# 后端依赖（精确版本，Python 3.14 + Windows wheel 已验证）
+# 后端生产依赖（精确版本，与 uv.lock 对齐；Python 3.14 + Docker Linux wheel）
 # 新增依赖须遵循 ai-engineering-standards 规范并经授权。
-fastapi==0.162.4
+# Web 框架与服务器
+fastapi==0.165.0
 uvicorn==0.54.0
-# 公共配置表（PostgreSQL 后端，可选：AP_STORE=postgres 时才连接）
-psycopg[binary,pool]==3.3.8
-# Logto 统一认证预留（JWT 校验，可选：AP_AUTH_MODE=logto 时才加载）
+# 统一日志出口（app/core/logger.py）
+loguru==0.8.0
+# 配置单例（.env 自动加载；pydantic-settings 已传递依赖 python-dotenv）
+pydantic-settings==2.16.3
+# 数据层：SQLModel + SQLAlchemy 异步 + SQLite 内存降级 + Postgres 生产库
+sqlmodel==0.0.50
+sqlalchemy[asyncio]==2.1.9
+aiosqlite==0.22.1
+psycopg[binary,pool]==3.3.9
+# Logto 统一认证（JWT 校验，仅 AP_AUTH_MODE=logto 时延迟加载）
 PyJWT==2.15.1
 cryptography==50.0.2
+# 文章生成工作流：LangGraph + OpenAI 兼容网关
+langchain-openai==1.8.5
+langgraph==1.2.24
+langgraph-checkpoint-postgres==3.2.1
+httpx==0.28.1
+# 热点采集与正文提取（requests 为 collector 顶层导入，trafilatura 为核心采集依赖）
+requests==2.34.2
+trafilatura==2.4.0

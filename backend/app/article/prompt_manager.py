@@ -16,6 +16,8 @@
 修改提示词只需编辑 md 文件，无需改代码；带缓存，同一进程只读盘一次。
 """
 
+from ..core.logger import logger
+
 from pathlib import Path
 
 # 项目根的 prompt 目录
@@ -40,7 +42,7 @@ def get_prompt(func: str, role: str = "user") -> str:
         try:
             _CACHE[key] = path.read_text(encoding="utf-8").strip()
         except OSError:
-            print(f"[prompt] 提示词文件缺失：{path}")
+            logger.info(f"[prompt] 提示词文件缺失：{path}")
             _CACHE[key] = ""
     return _CACHE[key]
 
@@ -73,11 +75,11 @@ def list_prompts() -> dict:
 
 
 if __name__ == "__main__":
-    print(f"[prompt] 目录：{PROMPT_DIR}")
+    logger.info(f"[prompt] 目录：{PROMPT_DIR}")
     inventory = list_prompts()
     if not inventory:
-        print("[prompt] 未发现任何提示词")
+        logger.info("[prompt] 未发现任何提示词")
     for name, roles in inventory.items():
         for r in roles:
             text = get_prompt(name, r)
-            print(f"  {name}/{r}.md  {len(text)} 字符")
+            logger.info(f"  {name}/{r}.md  {len(text)} 字符")

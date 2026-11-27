@@ -31,7 +31,12 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/v1': {
-        target: process.env.AP_DEV_API || 'http://127.0.0.1:8081',
+        target: process.env.AP_DEV_API || 'http://127.0.0.1:8002',
+        changeOrigin: true,
+      },
+      // 文章封面/正文配图（采集图片静态目录，后端 /images 挂载）
+      '/images': {
+        target: process.env.AP_DEV_API || 'http://127.0.0.1:8002',
         changeOrigin: true,
       },
     },

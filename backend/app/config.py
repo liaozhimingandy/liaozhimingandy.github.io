@@ -24,14 +24,6 @@ from .core.config import (  # noqa: F401  再导出
     reload_settings,
 )
 
-FALLBACK_STANDARDS_VERSION = "unknown"
-
-
-def read_standards_version_compat() -> str:
-    from .core.config import read_standards_version as _read
-    return _read()
-
-
 def dist_index_exists() -> bool:
     return get_settings() is not None and (DIST_DIR / "index.html").is_file()
 
@@ -75,11 +67,6 @@ def store_backend() -> str:
 
 def database_url() -> str:
     """PostgreSQL DSN（psycopg 可直接使用的 postgresql:// URL 或 libpq conninfo）。"""
-    return get_settings().database_dsn
-
-
-def build_database_url_from_parts() -> str:
-    """兼容旧名：由分散环境变量拼 DSN（逻辑已并入 Settings.database_dsn）。"""
     return get_settings().database_dsn
 
 

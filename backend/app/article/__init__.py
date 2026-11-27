@@ -12,6 +12,9 @@
     prompt_manager.py  提示词加载：prompt/<func>/{system,user}.md
     pipeline.py        命令行编排：--stage collect|cluster|all
 
-分层：api（../article_api.py）-> service（事务出口）-> dal（DAO）-> SQLModel。
+分层：router.py（路由层，本包统一导出）-> service（事务出口）-> dal（DAO）-> SQLModel。
 运行约束：包内一律相对导入，须以 python -m app.article.xxx 方式运行。
 """
+
+from .router import router  # noqa: F401  上一级统一导出的 APIRouter
+

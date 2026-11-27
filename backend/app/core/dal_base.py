@@ -24,7 +24,6 @@
 
 from __future__ import annotations
 
-import logging
 import time
 from abc import ABC
 from dataclasses import dataclass
@@ -33,6 +32,8 @@ from typing import Any, Generic, Sequence, TypeVar, cast, get_args, get_origin
 from sqlalchemy import delete, exists, func, inspect, update
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
+
+from .logger import logger
 
 T = TypeVar("T")
 
@@ -114,7 +115,7 @@ class BaseDAO(ABC, Generic[T]):
         if model is None:
             raise TypeError(f"{type(self).__name__} 未绑定 ORM 模型，不能实例化")
         self.session = session
-        self.logger = logging.getLogger(f"dao.{model.__tablename__}")
+        self.logger = logger.bind(dao=model.__tablename__)
         self._model_columns = _model_columns(model)
 
     # ---------------------------------------------------------------- #
@@ -139,7 +140,7 @@ class BaseDAO(ABC, Generic[T]):
         limit = min(max(raw_limit, 1), self.MAX_LIMIT)
         if limit != raw_limit:
             self.logger.warning(
-                "limit clamped table=%s request=%s -> %s", self.table_name, raw_limit, limit
+                f"limit clamped table={self.table_name} request={raw_limit} -> {limit}"
             )
         return limit, max(int(offset), 0)
 
@@ -154,14 +155,14 @@ class BaseDAO(ABC, Generic[T]):
             result = await self.session.exec(stmt)
         except Exception:
             self.logger.exception(
-                "database error table=%s op=%s cost=%.3fs",
-                self.table_name, op, time.perf_counter() - start,
+                f"database error table={self.table_name} op={op} "
+                f"cost={time.perf_counter() - start:.3f}s"
             )
             raise
         cost = time.perf_counter() - start
         if cost >= SLOW_QUERY_THRESHOLD:
             self.logger.warning(
-                "slow query table=%s op=%s cost=%.3fs", self.table_name, op, cost
+                f"slow query table={self.table_name} op={op} cost={cost:.3f}s"
             )
         return result
 
@@ -172,8 +173,8 @@ class BaseDAO(ABC, Generic[T]):
             result = await self.session.exec(stmt)
         except Exception:
             self.logger.exception(
-                "database error table=%s op=%s cost=%.3fs",
-                self.table_name, op, time.perf_counter() - start,
+                f"database error table={self.table_name} op={op} "
+                f"cost={time.perf_counter() - start:.3f}s"
             )
             raise
         return result

@@ -81,7 +81,7 @@ export class PortalApiError extends Error {
   }
 }
 
-async function authHeaders(): Promise<Record<string, string>> {
+export async function authHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = await currentAccessToken().catch(() => null)
   if (token) headers.Authorization = `Bearer ${token}`
@@ -93,7 +93,7 @@ async function authHeaders(): Promise<Record<string, string>> {
   return headers
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!apiConfigured()) throw new PortalApiError('后端 API 未配置', 0, 'API_NOT_CONFIGURED')
   const base = cloudConfig().apiBase
   const url = `${base}${path}`
@@ -119,7 +119,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T
 }
 
-function jsonBody(value: unknown): RequestInit {
+export function jsonBody(value: unknown): RequestInit {
   return { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) }
 }
 

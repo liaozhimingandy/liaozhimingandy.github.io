@@ -11,15 +11,14 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
-from .core.config import get_settings
-from .portal.models import APP_STATUSES, APP_TYPES, OPEN_MODES, VISIBILITIES
-from .portal_api import (
+from .models import APP_STATUSES, APP_TYPES, OPEN_MODES, VISIBILITIES
+from .router import (
     _api_error,
     _handle_domain_error,
     get_portal_service,
     require_admin,
 )
-from .portal.service import PortalService
+from .service import PortalService
 
 router = APIRouter()
 

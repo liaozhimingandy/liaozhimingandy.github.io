@@ -10,12 +10,14 @@
       整个会话事务待回滚，SAVEPOINT 不再适用）。
 """
 
+
 from __future__ import annotations
+from ...core.logger import logger
 
 import json
 from typing import Any
 
-from sqlalchemy import or_
+from sqlalchemy import delete, or_
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -25,6 +27,7 @@ from ..models import (
     Article,
     ArticleEvent,
     ArticleEventNewsRel,
+    ArticleGenerationTask,
     ArticleNews,
     ArticleTopic,
     utcnow,
@@ -33,7 +36,7 @@ from ..utils import normalize_news_url
 
 
 def _log(message: str) -> None:
-    print(f"[article-dal] {message}")
+    logger.info(f"[article-dal] {message}")
 
 
 def _to_int(value: Any, default: int = 0) -> int:
@@ -321,6 +324,31 @@ class NewsDAO(BaseDAO[ArticleNews]):
         )
         return list((await self._execute(stmt, "list_by_rel")).all())
 
+    async def sources_by_event(self, event_ids: list[int]) -> dict[int, list[str]]:
+        """批量取每个 event 的采集源（article_news.hot_source 去重）。
+
+        一次联表查询代替逐 event 查询；按 news_id 排序保持来源出现顺序。
+        前端用于按采集源筛选话题和在卡片上展示来源标签。
+        """
+        ids = [int(i) for i in event_ids if int(i or 0)]
+        if not ids:
+            return {}
+        stmt = (
+            select(ArticleEventNewsRel.event_id, ArticleNews.hot_source)
+            .join(ArticleNews, ArticleNews.id == ArticleEventNewsRel.news_id)
+            .where(ArticleEventNewsRel.event_id.in_(ids))
+            .order_by(ArticleEventNewsRel.news_id)
+        )
+        result: dict[int, list[str]] = {}
+        for row in (await self._execute(stmt, "sources_by_event")).all():
+            event_id, source = row[0], str(row[1] or "").strip()
+            if not source:
+                continue
+            bucket = result.setdefault(int(event_id), [])
+            if source not in bucket:      # 同 event 的同源去重
+                bucket.append(source)
+        return result
+
 
 # --------------------------------------------------------------------------- #
 # event-news 关联
@@ -360,6 +388,113 @@ _ARTICLE_BRIEF_COLUMNS = (
 )
 
 
+# --------------------------------------------------------------------------- #
+# generation task（生成任务，前端轮询查此表）
+# --------------------------------------------------------------------------- #
+
+# 进行中的任务状态：并发锁与僵尸任务识别共用
+_IN_PROGRESS_STATUSES = ("queued", "running", "waiting_approval")
+
+
+class TaskDAO(BaseDAO[ArticleGenerationTask]):
+    model = ArticleGenerationTask
+
+    async def create_task(self, task_id: str, event_id: int, event_title: str,
+                          created_at: str, thread_id: str = "",
+                          article_uuid: str = "",
+                          need_review: bool = True) -> ArticleGenerationTask:
+        """登记一个 queued 任务；flush 回填主键，commit 由上层负责。"""
+        task = ArticleGenerationTask(
+            task_id=task_id,
+            event_id=event_id,
+            event_title=event_title,
+            status="queued",
+            thread_id=thread_id,
+            article_uuid=article_uuid,
+            need_review=bool(need_review),
+            created_at=created_at,
+        )
+        await self.create(task)
+        return task
+
+    async def get_by_task_id(self, task_id: str) -> ArticleGenerationTask | None:
+        raw = str(task_id or "").strip()
+        if not raw:
+            return None
+        result = await self._execute(
+            select(ArticleGenerationTask)
+            .where(ArticleGenerationTask.task_id == raw).limit(1),
+            "get_by_task_id",
+        )
+        return result.first()
+
+    async def patch(self, task_id: str, fields: dict) -> bool:
+        """按 task_id 局部更新任务字段，返回是否命中。
+
+        DAO 只 flush 不 commit，事务出口在 service / session_scope。
+        用 dict 白名单由 service 传入（已按表列校验），避免拼错字段。
+        """
+        data = dict(fields or {})
+        if not data:
+            return False
+        self._validate_fields(data)
+        result = await self.exec_write(
+            ArticleGenerationTask.__table__.update()
+            .where(ArticleGenerationTask.task_id == task_id)
+            .values(**data),
+            "patch",
+        )
+        return bool(result.rowcount)
+
+    async def list_recent(self, limit: int = 20) -> list[ArticleGenerationTask]:
+        """最近任务，按自增 id 倒序（id 单调，比字符串时间排序稳定）。"""
+        stmt = (
+            select(ArticleGenerationTask)
+            .order_by(ArticleGenerationTask.id.desc())
+            .limit(max(_to_int(limit), 0))
+        )
+        return list((await self._execute(stmt, "list_recent")).all())
+
+    async def in_progress_for_event(self, event_id: int) -> ArticleGenerationTask | None:
+        """该 event 最近一个进行中任务（queued/running/waiting_approval），无则 None。"""
+        stmt = (
+            select(ArticleGenerationTask)
+            .where(
+                ArticleGenerationTask.event_id == event_id,
+                ArticleGenerationTask.status.in_(_IN_PROGRESS_STATUSES),
+            )
+            .order_by(ArticleGenerationTask.id.desc())
+            .limit(1)
+        )
+        result = await self._execute(stmt, "in_progress_for_event")
+        return result.first()
+
+    async def list_stale(self) -> list[ArticleGenerationTask]:
+        """进程重启遗留的 running/queued 任务（无后台协程接管，需标记失败）。"""
+        stmt = select(ArticleGenerationTask).where(
+            ArticleGenerationTask.status.in_(("queued", "running")),
+        )
+        return list((await self._execute(stmt, "list_stale")).all())
+
+    async def prune(self, keep: int) -> int:
+        """裁剪历史：只保留最近 keep 条，返回删除条数。"""
+        keep = max(_to_int(keep), 0)
+        # SQLModel 的 session.exec(select(单列)) 返回 ScalarResult，all() 直接是标量
+        result = await self._execute(
+            select(ArticleGenerationTask.id)
+            .order_by(ArticleGenerationTask.id.desc())
+            .limit(keep), "prune.scan",
+        )
+        keep_ids = [int(v) for v in result.all()]
+        if not keep_ids:
+            stmt = delete(ArticleGenerationTask)
+        else:
+            stmt = delete(ArticleGenerationTask).where(
+                ArticleGenerationTask.id.notin_(keep_ids))
+        result = await self.exec_write(stmt, "prune.delete")
+        return int(result.rowcount or 0)
+
+
 class ArticleDAO(BaseDAO[Article]):
     model = Article
 
@@ -390,6 +525,7 @@ class ArticleDAO(BaseDAO[Article]):
             multi_platform=data.get("multi_platform") or {},
             check_report=str(data.get("check_report") or ""),
             final_article=str(data.get("final_article") or ""),
+            cover_image=str(data.get("cover_image") or ""),
             images=data.get("images") or [],
             source_urls=data.get("source_urls") or [],
             model=str(data.get("model") or ""),

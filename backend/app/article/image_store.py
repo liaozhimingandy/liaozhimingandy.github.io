@@ -10,14 +10,14 @@
 main.py 等调用方只 import 本模块，不直接触碰下载/过滤细节。
 """
 
+from ..core.logger import logger
+
 import json
-import secrets
 import threading
-import time
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse, urljoin
-from uuid import UUID
+from uuid import uuid7
 
 import requests
 
@@ -26,23 +26,6 @@ try:
     from PIL import Image as PILImage
 except ImportError:
     PILImage = None
-
-try:
-    # Python 3.14+ 内置 UUIDv7
-    from uuid import uuid7
-except ImportError:
-    # 兼容 Python 3.9~3.13：按 RFC 9562 生成 UUIDv7
-    def uuid7() -> UUID:
-        ms = int(time.time() * 1000) & ((1 << 48) - 1)
-        value = (
-            (ms << 80)
-            | (0x7 << 76)
-            | (secrets.randbits(12) << 64)
-            | (0b10 << 62)
-            | secrets.randbits(62)
-        )
-        return UUID(int=value)
-
 
 # ========== 1. 请求头 ==========
 COMMON_UA = (
@@ -223,7 +206,7 @@ def collect_image_candidates(html: str, body_html: str, page_url: str):
                 if srcset:
                     add(srcset.split(",")[0].strip().split(" ")[0], img.get("alt", ""), "body", ctx, attr_hint)
         except Exception as e:
-            print(f"⚠️ 正文图片解析失败 {page_url} | {e}")
+            logger.warning(f"⚠️ 正文图片解析失败 {page_url} | {e}")
 
     # 2) 原始 HTML 正文区域：搜狐等站点用懒加载，src 为空、真实地址在 data-src
     from lxml import etree
@@ -538,7 +521,7 @@ def save_thumbnail(thumb_url: str, page_url: str, topic: str = "") -> str:
         return local_path
     except (requests.RequestException, OSError, ValueError) as exc:
         last_error = str(exc)
-        print(f"⚠️ 封面缩略图下载失败 {url[:80]} | {last_error}")
+        logger.warning(f"⚠️ 封面缩略图下载失败 {url[:80]} | {last_error}")
         return ""
     finally:
         if resp is not None:

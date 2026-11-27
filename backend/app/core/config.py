@@ -103,10 +103,12 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ article 流水线
     ARTICLE_SCHEDULER_ENABLED: bool = Field(True, description="随服务启动采集/聚合调度")
     ARTICLE_COLLECT_INTERVAL_MINUTES: int = Field(30, description="采集间隔；0=关闭定时")
-    ARTICLE_CLUSTER_INTERVAL_MINUTES: int = Field(10, description="聚合间隔；0=关闭定时")
+    ARTICLE_CLUSTER_INTERVAL_MINUTES: int = Field(3, description="聚合间隔；0=关闭定时")
     ARTICLE_SCHEDULER_START_DELAY_SEC: int = Field(60, description="启动后首轮延迟秒数")
     ARTICLE_GENERATE_REQUIRE_ADMIN: bool = Field(
         False, description="触发生成是否要求管理员")
+    ARTICLE_HITL_ENABLED: bool = Field(
+        True, description="文章生成是否需要人工审核（大纲/终审）；False 时自动通过")
 
     # ------------------------------------------------------------------ LLM（文章生成）
     LLM_BASE_URL: str = Field("https://llm.alsoapp.com/v1", description="OpenAI 兼容端点")

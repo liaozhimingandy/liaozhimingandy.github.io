@@ -1,6 +1,7 @@
 """Also Apps 门户：UUIDv7 主键生成与 UTC 时间工具。
 
-Python 3.13 尚未内置 uuid.uuid7()（3.14 才有），这里按 RFC 9562 自行实现，
+Python 3.14 已内置 ``uuid.uuid7()``（RFC 9562），本模块不再自行实现 UUIDv7，
+只做薄封装再导出，保留既有导入路径（portal/models.py、tests）不破坏。
 与 sql/004_apps_portal.sql 的 PG uuidv7() server_default 双保险：
 应用侧先生成时间有序 UUID，DB 侧仅在应用未给值时兜底。
 
@@ -10,41 +11,12 @@ Python 3.13 尚未内置 uuid.uuid7()（3.14 才有），这里按 RFC 9562 自�
 
 from __future__ import annotations
 
-import os
 import secrets
-import threading
-import time
 import uuid
 from datetime import datetime, timezone
 
-_LOCK = threading.Lock()
-_last_ms = 0
-_seq = 0
-_SEQ_MAX = 0xFFF  # rand_a 12 位
-_TS_MASK = (1 << 48) - 1
-_RAND_B_MASK = (1 << 62) - 1
-
-
-def uuid7() -> uuid.UUID:
-    """生成 RFC 9562 UUIDv7：前 48 位毫秒时间戳，同毫秒内 12 位计数器保序。"""
-    global _last_ms, _seq
-    with _LOCK:
-        now_ms = int(time.time() * 1000)
-        if now_ms > _last_ms:
-            _last_ms, _seq = now_ms, 0
-        else:
-            _seq += 1
-            if _seq > _SEQ_MAX:
-                _last_ms += 1
-                _seq = 0
-        ts_ms, seq = _last_ms, _seq
-    rand_b = int.from_bytes(os.urandom(8), "big") & _RAND_B_MASK
-    value = (ts_ms & _TS_MASK) << 80
-    value |= 0x7 << 76          # version 7
-    value |= seq << 64          # rand_a
-    value |= 0b10 << 62         # RFC 4122 variant
-    value |= rand_b
-    return uuid.UUID(int=value)
+# Python 3.14+ 内置；项目 .python-version = 3.14，无需第三方包或手写实现。
+uuid7 = uuid.uuid7
 
 
 def utcnow() -> datetime:

@@ -8,7 +8,11 @@
     - JSON 字段用通用 JSON 列类型：Postgres 上落在 JSONB，SQLite（内存库/测试）
       落在 JSON，读写行为一致。
 
-非表模型：GenerationTask / CollectStats / EventMaterial（运行时状态与组合视图）。
+非表模型：CollectStats / EventMaterial（运行时组合视图）。
+
+GenerationTask 已升级为表模型 article_generation_task：任务状态入库，
+前端轮询查表即可，进程重启不丢、多实例可见；LangGraph 断点靠 thread_id
+从 checkpointer 恢复，运行上下文凭 event_id 重读素材重建。
 """
 
 from __future__ import annotations
@@ -16,18 +20,19 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from pydantic import BaseModel, NaiveDatetime
+from pydantic import BaseModel
 from sqlalchemy import JSON, Column, Text, UniqueConstraint
 from sqlmodel import SQLModel, Field
 
 
 def utcnow() -> datetime:
-    """统一 UTC 时间（naive UTC；配合 NaiveDatetime 注解声明 naive 存储）。
+    """统一 UTC 时间（timezone-aware，自带 +00:00 时区标记）。
 
-    SQLModel 0.0.50 起 datetime 字段默认按 UTCDateTime 处理并要求 aware 值；
-    article_* 表列历史语义为 naive UTC，故显式标注 NaiveDatetime 保持不变。
+    历史上这里存 naive UTC，DB 里比北京时间少 8 小时又没有时区标记，
+    排查问题时极易误读；现改为 aware UTC，新表列直接建为带时区类型，
+    存量 Postgres 列由启动时的时间列迁移（migrate_time_columns）升级。
     """
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(timezone.utc)
 
 
 # --------------------------------------------------------------------------- #
@@ -46,7 +51,7 @@ class ArticleTopic(SQLModel, table=True):
     title: str = Field(default="", index=True)
     source: str = Field(default="")
     hot_score: int = Field(default=0)
-    fetch_time: NaiveDatetime | None = Field(default_factory=utcnow)
+    fetch_time: datetime | None = Field(default_factory=utcnow)
     status: str = Field(default="pending", index=True)
     event_id: int | None = Field(default=None, index=True)
 
@@ -61,8 +66,8 @@ class ArticleEvent(SQLModel, table=True):
     event_summary: str | None = None
     total_score: int = Field(default=0)
     score_gain: int = Field(default=0)
-    first_seen: NaiveDatetime | None = Field(default_factory=utcnow)
-    last_seen: NaiveDatetime | None = Field(default_factory=utcnow)
+    first_seen: datetime | None = Field(default_factory=utcnow)
+    last_seen: datetime | None = Field(default_factory=utcnow)
     status: str = Field(default="pending", index=True)
     source_urls: list[Any] = Field(default_factory=list, sa_column=Column(JSON))
     images: list[Any] = Field(default_factory=list, sa_column=Column(JSON))
@@ -92,7 +97,7 @@ class ArticleNews(SQLModel, table=True):
     text: str = Field(default="", sa_column=Column(Text))
     images: list[Any] = Field(default_factory=list, sa_column=Column(JSON))
     thumbnail: str | None = None
-    create_time: NaiveDatetime | None = Field(default_factory=utcnow)
+    create_time: datetime | None = Field(default_factory=utcnow)
 
 
 class ArticleEventNewsRel(SQLModel, table=True):
@@ -121,6 +126,8 @@ class Article(SQLModel, table=True):
         default_factory=dict, sa_column=Column(JSON))
     check_report: str = Field(default="", sa_column=Column(Text))
     final_article: str = Field(default="", sa_column=Column(Text))
+    # 封面图（/images/... 站点根路径；illustrate 落库前从素材图选出）
+    cover_image: str = Field(default="", sa_column=Column(Text))
     images: list[Any] = Field(default_factory=list, sa_column=Column(JSON))
     source_urls: list[Any] = Field(default_factory=list, sa_column=Column(JSON))
     model: str = Field(default="")
@@ -128,8 +135,8 @@ class Article(SQLModel, table=True):
     is_current: bool = Field(default=True)
     thread_id: str | None = None
     uuid: str = Field(default="")
-    create_time: NaiveDatetime | None = Field(default_factory=utcnow)
-    update_time: NaiveDatetime | None = Field(default_factory=utcnow)
+    create_time: datetime | None = Field(default_factory=utcnow)
+    update_time: datetime | None = Field(default_factory=utcnow)
 
 
 # --------------------------------------------------------------------------- #
@@ -146,6 +153,8 @@ class EventMaterial(BaseModel):
     total_score: int = 0
     source_urls: list[str] = Field(default_factory=list)
     images: list[dict[str, Any]] = Field(default_factory=list)
+    # 各篇新闻的封面缩略图（news.thumbnail，本地相对路径），作封面兜底候选
+    thumbnails: list[str] = Field(default_factory=list)
     source_contents: list[str] = Field(default_factory=list)
 
     @classmethod
@@ -161,20 +170,89 @@ class EventMaterial(BaseModel):
         )
 
 
+class ArticleGenerationTask(SQLModel, table=True):
+    """文章生成任务（持久化任务表 article_generation_task）。
+
+    任务状态、检查点 thread_id、执行节点、审批信息全部入库：
+      - 前端轮询 GET /v1/articles/tasks/{task_id} 直接查表，不依赖内存；
+      - 进程重启后任务仍在，waiting_approval 的任务凭 thread_id 从
+        LangGraph checkpointer 恢复断点（Postgres 模式下跨进程续跑）；
+      - 运行上下文（素材）不入库，凭 event_id 重读 article_news 重建。
+    """
+
+    __tablename__ = "article_generation_task"
+    __table_args__ = (
+        UniqueConstraint("task_id", name="ux_article_gen_task_task_id"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    task_id: str = Field(default="", index=True)
+    event_id: int = Field(default=0, index=True)
+    event_title: str = Field(default="")
+    # queued / running / waiting_approval / done / failed
+    status: str = Field(default="queued", index=True)
+    error: str = ""
+    thread_id: str = ""             # LangGraph checkpointer 的检查点线程 id
+    article_id: int = 0
+    article_uuid: str = ""
+    current_step: str = ""          # 执行到哪一步（工作流节点名，如 generate_draft）
+    # 是否人工审核：重启续跑 queued 任务（checkpoint 里还没有这个 state）时需要
+    need_review: bool = True
+    created_at: str = ""
+    started_at: str = ""
+    finished_at: str = ""
+    # HITL：工作流暂停时的待审信息（前端据此渲染审批卡）
+    review_stage: str = ""          # outline / final
+    review_title: str = ""
+    review_content: str = Field(default="", sa_column=Column(Text))
+    review_options: list[Any] = Field(default_factory=list, sa_column=Column(JSON))
+
+
 class GenerationTask(BaseModel):
-    """一次文章生成任务的运行时状态（内存登记，不入库）。"""
+    """生成任务的公共视图（API 响应 DTO，由 ArticleGenerationTask 表模型投影）。"""
 
     task_id: str
     event_id: int
     event_title: str = ""
-    status: str = "queued"          # queued / running / done / failed
+    # queued / running / waiting_approval / done / failed
+    status: str = "queued"
     error: str = ""
     thread_id: str = ""
     article_id: int = 0
     article_uuid: str = ""
+    current_step: str = ""          # 执行到哪一步（工作流节点名）
+    need_review: bool = True
     created_at: str = ""
     started_at: str = ""
     finished_at: str = ""
+    # HITL：工作流暂停时的待审信息（前端据此渲染审批卡）
+    review_stage: str = ""          # outline / final
+    review_title: str = ""
+    review_content: str = ""
+    review_options: list[str] = Field(default_factory=list)
+
+    @classmethod
+    def from_row(cls, row: ArticleGenerationTask) -> "GenerationTask":
+        """表模型 -> 公共视图（显式投影，避免把主键 id 暴露给前端）。"""
+        return cls(
+            task_id=row.task_id,
+            event_id=row.event_id,
+            event_title=row.event_title,
+            status=row.status,
+            error=row.error,
+            thread_id=row.thread_id,
+            article_id=row.article_id,
+            article_uuid=row.article_uuid,
+            current_step=row.current_step,
+            need_review=bool(row.need_review),
+            created_at=row.created_at,
+            started_at=row.started_at,
+            finished_at=row.finished_at,
+            review_stage=row.review_stage,
+            review_title=row.review_title,
+            review_content=row.review_content,
+            review_options=[str(o) for o in (row.review_options or [])],
+        )
 
 
 class CollectStats(BaseModel):

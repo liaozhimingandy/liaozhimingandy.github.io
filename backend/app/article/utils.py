@@ -1,14 +1,9 @@
-"""article 包通用工具：链接规范化与 uuid 降级。"""
+"""article 包通用工具：链接规范化。"""
 
 from __future__ import annotations
 
 import re
 from urllib.parse import parse_qsl, unquote, urlencode, urlparse
-
-try:
-    from uuid import uuid7  # Python 3.14+ 原生
-except ImportError:
-    from uuid import uuid4 as uuid7  # 低版本降级，仍保证唯一
 
 # 规范化链接时忽略的常见跟踪参数（大小写不敏感）
 _TRACKING_PARAM_RE = re.compile(

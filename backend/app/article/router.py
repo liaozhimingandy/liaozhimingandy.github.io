@@ -11,6 +11,8 @@ Depends 链 get_session -> ArticleService 注入）、模型 -> 公共 JSON 的�
 
 生成是长任务：POST 立即返回 task_id，前端轮询任务状态；
 同一 event 同时只允许一个进行中任务，全局同一时刻只跑一个生成。
+
+由 app.article 包在上一级统一导出（from app.article import router）。
 """
 
 from __future__ import annotations
@@ -21,18 +23,18 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from . import config
-from .article import scheduler, service
-from .article.models import Article, ArticleEvent, GenerationTask
-from .article.service import ArticleService
-from .core.database import get_session
-from .portal_api import (
+from .. import config
+from ..auth import Principal
+from ..core.database import get_session
+from ..portal.router import (
     _api_error,
     optional_principal,
     require_admin,
     require_principal,
 )
-from .auth import Principal
+from . import scheduler, service
+from .models import Article, ArticleEvent, GenerationTask
+from .service import ArticleService
 
 router = APIRouter()
 
@@ -50,6 +52,10 @@ async def get_article_service(
 
 class GenerateRequest(BaseModel):
     event_id: int = Field(ge=1, description="要生成文章的聚合事件 id")
+    need_review: bool | None = Field(
+        default=None,
+        description="是否人工审核（大纲/终审）；不传用服务端 ARTICLE_HITL_ENABLED 配置",
+    )
 
 
 class TopicItem(BaseModel):
@@ -61,10 +67,14 @@ class TopicItem(BaseModel):
     source_urls: list[str]
     images: list[dict[str, Any]]
     generating: bool
+    # 素材的采集源（如 百度/微博/36氪），去重保序；前端展示标签与筛选
+    sources: list[str] = Field(default_factory=list)
 
 
-def _topic_item(event: ArticleEvent) -> TopicItem:
-    """ArticleEvent 表模型 -> 话题公共视图。"""
+async def _topic_item(
+    event: ArticleEvent, sources: list[str] | None = None,
+) -> TopicItem:
+    """ArticleEvent 表模型 -> 话题公共视图（generating 需查任务表）。"""
     return TopicItem(
         event_id=int(event.id or 0),
         event_title=event.event_title,
@@ -73,7 +83,8 @@ def _topic_item(event: ArticleEvent) -> TopicItem:
         status=event.status,
         source_urls=[str(u) for u in (event.source_urls or [])],
         images=[dict(i) for i in (event.images or []) if isinstance(i, dict)],
-        generating=service.task_in_progress(int(event.id or 0)),
+        generating=await service.task_in_progress(int(event.id or 0)),
+        sources=list(sources or []),
     )
 
 
@@ -102,8 +113,17 @@ async def list_topics(
         items = await svc.list_topics(limit=limit)
     except Exception as exc:
         raise _api_error(503, "ARTICLE_DB_ERROR", f"话题加载失败：{exc}") from None
+    # 采集源一次批量查齐（联表），避免逐话题查库
+    try:
+        sources = await svc.news.sources_by_event(
+            [int(e.id or 0) for e in items])
+    except Exception:
+        sources = {}
     return {
-        "items": [_topic_item(event).model_dump() for event in items],
+        "items": [
+            (await _topic_item(event, sources.get(int(event.id or 0)))).model_dump()
+            for event in items
+        ],
         "total": len(items),
     }
 
@@ -125,7 +145,7 @@ async def generate_article(
     """选择话题（event）触发生成；立即返回任务描述，前端轮询任务状态。"""
     _require_generate_permission(principal)
     try:
-        task = await service.generate_for_event(body.event_id)
+        task = await service.generate_for_event(body.event_id, body.need_review)
     except LookupError as exc:
         raise _api_error(404, "EVENT_NOT_FOUND", str(exc)) from None
     except RuntimeError as exc:
@@ -148,8 +168,8 @@ async def list_tasks(
     limit: int = Query(default=20, ge=1, le=100),
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
-    """最近的生成任务列表（新的在前）。"""
-    return {"items": [_task_public(t) for t in service.list_tasks(limit=limit)]}
+    """最近的生成任务列表（新的在前，直接查任务表）。"""
+    return {"items": [_task_public(t) for t in await service.list_tasks(limit=limit)]}
 
 
 @router.get("/v1/articles/tasks/{task_id}", tags=["article"])
@@ -157,9 +177,57 @@ async def get_task(
     task_id: str,
     principal: Principal = Depends(require_principal),
 ) -> dict[str, Any]:
-    task = service.get_task(task_id)
+    task = await service.get_task(task_id)
     if task is None:
         raise _api_error(404, "TASK_NOT_FOUND", f"任务不存在：{task_id}")
+    return _task_public(task)
+
+
+class ReviewRequest(BaseModel):
+    decision: str = Field(description="审核决定：pass / modify / reject")
+    suggest: str = Field(default="", description="修改意见，decision=modify 时必填")
+
+
+@router.post("/v1/articles/tasks/{task_id}/review", tags=["article"])
+async def review_task(
+    task_id: str,
+    body: ReviewRequest,
+    principal: Principal = Depends(require_principal),
+) -> dict[str, Any]:
+    """HITL：前端审批后从断点恢复工作流。
+
+    decision 非法、或修改决定缺意见时返回 422；任务不存在/不在等待态返回 409。
+    """
+    decision = body.decision.strip().lower()
+    if decision not in ("pass", "modify", "reject"):
+        raise _api_error(422, "INVALID_REVIEW", "decision 必须是 pass / modify / reject")
+    if decision == "modify" and not body.suggest.strip():
+        raise _api_error(422, "REVIEW_SUGGEST_REQUIRED", "修改决定必须填写修改意见")
+    try:
+        task = await service.resume_generation(task_id, decision, body.suggest.strip())
+    except LookupError as exc:
+        raise _api_error(404, "TASK_NOT_FOUND", str(exc)) from None
+    except RuntimeError as exc:
+        raise _api_error(409, "TASK_NOT_WAITING", str(exc)) from None
+    return _task_public(task)
+
+
+@router.post("/v1/articles/tasks/{task_id}/retry", tags=["article"])
+async def retry_task(
+    task_id: str,
+    principal: Principal = Depends(require_principal),
+) -> dict[str, Any]:
+    """失败任务重试：有 checkpoint 从报错节点续跑，否则从头跑首段。"""
+    try:
+        task = await service.retry_task(task_id)
+    except LookupError as exc:
+        raise _api_error(404, "TASK_NOT_FOUND", str(exc)) from None
+    except RuntimeError as exc:
+        message = str(exc)
+        if message.startswith("event_busy:"):
+            raise _api_error(409, "EVENT_GENERATING",
+                             "该话题已有任务进行中") from None
+        raise _api_error(409, "TASK_NOT_RETRYABLE", message) from None
     return _task_public(task)
 
 

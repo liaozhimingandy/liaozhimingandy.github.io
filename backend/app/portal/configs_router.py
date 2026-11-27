@@ -29,9 +29,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query, Response
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from .core.config import get_settings
-from .core.database import get_session
-from .schemas import (
+from ..core.config import get_settings
+from ..core.database import get_session
+from ..schemas import (
     AuthModeResponse,
     ConfigListResponse,
     ConfigPutRequest,
@@ -43,9 +43,9 @@ from .schemas import (
     ToolListResponse,
     ToolRecordResponse,
 )
-from .portal.models import ConflictError, NotFoundError, PortalError
-from .portal_api import _api_error, get_auth_provider, get_portal_service, require_principal
-from .portal.service import ConfigService, PortalService, QuotaExceededError
+from .models import ConflictError, NotFoundError, PortalError
+from .router import _api_error, get_auth_provider, get_portal_service, require_principal
+from .service import ConfigService, PortalService, QuotaExceededError
 
 router = APIRouter()
 

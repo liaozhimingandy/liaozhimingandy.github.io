@@ -5,6 +5,7 @@ from .article import (  # noqa: F401
     EventDAO,
     NewsDAO,
     RelDAO,
+    TaskDAO,
     TopicDAO,
 )
 from .base import BaseDAO, PageResult  # noqa: F401

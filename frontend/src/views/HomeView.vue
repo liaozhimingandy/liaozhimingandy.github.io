@@ -1,8 +1,10 @@
 <script setup lang="ts">
 /** 工具集门户：列出所有已接入的工具，未来新增工具=加一张卡片 + 一条路由。 */
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, type Component } from 'vue'
 import { RouterLink } from 'vue-router'
-import { LockOnIcon, ChevronRightIcon, CloudIcon, LogoutIcon } from 'tdesign-icons-vue-next'
+import {
+  LockOnIcon, ChevronRightIcon, CloudIcon, LogoutIcon, FileIcon,
+} from 'tdesign-icons-vue-next'
 import { cachedAuthState, currentSub, displayUser, signIn, signOut, type DisplayUser } from '@/services/auth/logto.ts'
 import { logtoEnabled } from '@/config.ts'
 
@@ -12,15 +14,25 @@ interface ToolCard {
   en: string
   desc: string
   tags: string[]
+  icon: Component
 }
 
 const tools: ToolCard[] = [
+  {
+    to: '/article/studio/',
+    title: 'AI 文章工作台',
+    en: 'Article Studio',
+    desc: '选择采集到的热点话题，一键生成公众号 / 百家号 / 今日头条多平台文章，预览排版后复制发布。',
+    tags: ['热点选题', 'AI 生成', '多平台预览'],
+    icon: FileIcon,
+  },
   {
     to: '/safekeep',
     title: '锦囊',
     en: 'SafeKeep',
     desc: '本地零知识密码库。浏览器内 AES-256-GCM 加密，主密码与恢复码双钥匙解锁，纯密文本地存储与加密备份。',
     tags: ['零知识', '本地存储', 'Web Crypto'],
+    icon: LockOnIcon,
   },
 ]
 
@@ -69,7 +81,7 @@ async function logout(): Promise<void> {
       <t-card hoverable class="tool-card">
         <div class="flex items-center gap-3 mb-2.5">
           <div class="w-11 h-11 rounded-xl bg-brand-soft text-brand flex items-center justify-center shrink-0">
-            <LockOnIcon size="22px" />
+            <component :is="t.icon" size="22px" />
           </div>
           <div class="min-w-0 flex-1">
             <div class="text-base font-semibold text-ink leading-tight">{{ t.title }}</div>

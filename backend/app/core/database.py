@@ -26,6 +26,8 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+from .logger import logger
+
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -35,7 +37,7 @@ from .config import get_settings
 
 
 def _log(message: str) -> None:
-    print(f"[article-db] {message}")
+    logger.info(f"[article-db] {message}")
 
 
 # --------------------------------------------------------------------------- #

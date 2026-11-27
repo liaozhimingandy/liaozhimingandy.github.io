@@ -1,6 +1,6 @@
 """portal 服务层：业务编排与事务边界。
 
-分层：API 路由（../portal_api.py / ../portal_admin_api.py / ../configs.py）
+分层：API 路由（router.py / admin_router.py / configs_router.py）
 经 Depends(get_session) 注入本层；数据读写只走 dal（BaseDAO + 各表 DAO）；
 DAO 只 flush 不 commit，事务出口统一在本层。
 

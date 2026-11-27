@@ -15,6 +15,8 @@
     py -3.13 -m app.article.pipeline --stage cluster   # 只聚合
 """
 
+from ..core.logger import logger
+
 import argparse
 import asyncio
 import time
@@ -28,9 +30,9 @@ STAGE_ALL = "all"
 
 
 def _stage_banner(name: str):
-    print("\n" + "=" * 60)
-    print(f"阶段：{name}")
-    print("=" * 60)
+    logger.info("\n" + "=" * 60)
+    logger.info(f"阶段：{name}")
+    logger.info("=" * 60)
 
 
 async def run_collect() -> dict:
@@ -38,7 +40,7 @@ async def run_collect() -> dict:
     _stage_banner("采集热点新闻")
     started = time.time()
     stats = await collector.run_collect()
-    print(f"[pipeline] 采集完成：{stats} | 耗时 {time.time() - started:.1f}s")
+    logger.info(f"[pipeline] 采集完成：{stats} | 耗时 {time.time() - started:.1f}s")
     return stats
 
 
@@ -47,7 +49,7 @@ async def run_cluster() -> None:
     _stage_banner("聚合事件")
     started = time.time()
     await cluster.cluster_new_topics()
-    print(f"[pipeline] 聚合完成 | 耗时 {time.time() - started:.1f}s")
+    logger.info(f"[pipeline] 聚合完成 | 耗时 {time.time() - started:.1f}s")
 
 
 async def _main_async(argv=None) -> int:
@@ -61,14 +63,14 @@ async def _main_async(argv=None) -> int:
     args = parser.parse_args(argv)
 
     if not await database.init_db():
-        print("[pipeline] 数据库不可用，已降级内存库（数据不落盘）")
+        logger.info("[pipeline] 数据库不可用，已降级内存库（数据不落盘）")
     started = time.time()
     if args.stage in (STAGE_COLLECT, STAGE_ALL):
         await run_collect()
     if args.stage in (STAGE_CLUSTER, STAGE_ALL):
         await run_cluster()
     await database.dispose_engine()
-    print(f"[pipeline] 本次运行结束（stage={args.stage}），总耗时 {time.time() - started:.1f}s")
+    logger.info(f"[pipeline] 本次运行结束（stage={args.stage}），总耗时 {time.time() - started:.1f}s")
     return 0
 
 

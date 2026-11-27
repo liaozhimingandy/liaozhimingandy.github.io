@@ -8,6 +8,8 @@
 也可手动运行：py -3.13 -m app.article.cluster
 """
 
+from ..core.logger import logger
+
 import asyncio
 import hashlib
 import json
@@ -59,11 +61,11 @@ def _get_model():
         from sentence_transformers import SentenceTransformer
 
         _MODEL = SentenceTransformer(EMBED_MODEL_NAME)
-        print(f"[cluster] 已加载向量模型：{EMBED_MODEL_NAME}")
+        logger.info(f"[cluster] 已加载向量模型：{EMBED_MODEL_NAME}")
         return _MODEL
     except Exception as exc:
         _MODEL_UNAVAILABLE = True
-        print(f"[cluster] 向量模型不可用，后续只用 SimHash：{type(exc).__name__}: {exc}")
+        logger.info(f"[cluster] 向量模型不可用，后续只用 SimHash：{type(exc).__name__}: {exc}")
         return None
 
 
@@ -97,7 +99,7 @@ def _simhash_value(text: str) -> int:
             return int(_ExternalSimhash(" ".join(tokens)).value) & _MASK64
         except Exception as exc:
             _EXTERNAL_SIMHASH_FAILED = True
-            print(f"[cluster] simhash 包调用失败，改用内置实现：{type(exc).__name__}: {exc}")
+            logger.info(f"[cluster] simhash 包调用失败，改用内置实现：{type(exc).__name__}: {exc}")
 
     vector = [0] * 64
     for token, weight in Counter(tokens).items():
@@ -144,10 +146,10 @@ def _encode(text: str):
         try:
             vector = model.encode(text, convert_to_numpy=True)
         except Exception as exc:
-            print(f"[cluster] 向量编码失败：{type(exc).__name__}: {exc}")
+            logger.info(f"[cluster] 向量编码失败：{type(exc).__name__}: {exc}")
             return None
     except Exception as exc:
-        print(f"[cluster] 向量编码失败：{type(exc).__name__}: {exc}")
+        logger.info(f"[cluster] 向量编码失败：{type(exc).__name__}: {exc}")
         return None
     try:
         array = np.asarray(vector, dtype=float).reshape(-1)
@@ -156,7 +158,7 @@ def _encode(text: str):
             array = array / norm
         return array
     except Exception as exc:
-        print(f"[cluster] 向量格式化失败：{type(exc).__name__}: {exc}")
+        logger.info(f"[cluster] 向量格式化失败：{type(exc).__name__}: {exc}")
         return None
 
 
@@ -188,30 +190,30 @@ async def _event_similarity(dao: EventDAO, event: ArticleEvent, topic_title: str
     vector = _load_embedding(event.event_embedding)
     if vector is None:
         if event.event_embedding:
-            print(f"[cluster] event#{event.id} 向量解析失败，尝试重建")
+            logger.info(f"[cluster] event#{event.id} 向量解析失败，尝试重建")
         base = str(event.event_summary or event.event_title or "").strip()
         if not base:
-            print(f"[cluster] event#{event.id} 无标题/摘要，无法生成向量")
+            logger.info(f"[cluster] event#{event.id} 无标题/摘要，无法生成向量")
             return None
         vector = _encode(base)
         if vector is None:
-            print(f"[cluster] event#{event.id} 向量生成失败，降级只用 SimHash")
+            logger.info(f"[cluster] event#{event.id} 向量生成失败，降级只用 SimHash")
             return None
         if await dao.update_embedding(int(event.id or 0), vector.tolist()):
             event.event_embedding = vector.tolist()
         else:
-            print(f"[cluster] event#{event.id} 向量回写失败")
+            logger.info(f"[cluster] event#{event.id} 向量回写失败")
 
     topic_vector = _encode(topic_title)
     if topic_vector is None:
-        print(f"[cluster] topic 向量生成失败，降级只用 SimHash：{topic_title}")
+        logger.info(f"[cluster] topic 向量生成失败，降级只用 SimHash：{topic_title}")
         return None
     return _cosine(vector, topic_vector)
 
 
 def _log_compare(topic_title: str, event: ArticleEvent, dist: int, cosine, result: str):
     cos_text = "-" if cosine is None else f"{cosine:.4f}"
-    print(
+    logger.info(
         f"[cluster] topic《{topic_title}》 vs event#{event.id}"
         f"《{event.event_title}》 | 海明={dist} | 余弦={cos_text} | {result}"
     )
@@ -268,7 +270,7 @@ async def _recompute_all_event_simhash(dao: EventDAO, events: list[ArticleEvent]
             pairs.append((int(event.id or 0), value))
             event.simhash = value
     changed = await dao.update_simhashes(pairs)
-    print(f"[cluster] event simhash 重算：{changed}/{len(events)} 条更新")
+    logger.info(f"[cluster] event simhash 重算：{changed}/{len(events)} 条更新")
     return changed
 
 
@@ -318,7 +320,7 @@ async def _refresh_event_material(session: AsyncSession,
         event.images = images
         await RelDAO(session).link(event_id, [int(row.id or 0) for row in news_rows])
         await session.commit()
-        print(
+        logger.info(
             f"[cluster] event#{event_id}《{event_title}》素材：新闻 {len(news_rows)} 条，"
             f"链接 {len(source_urls)}，图片 {len(images)}"
         )
@@ -335,8 +337,8 @@ async def _refresh_all_event_materials(session: AsyncSession) -> int:
                     session, int(event.id or 0), event.event_title):
                 changed += 1
         except Exception as exc:
-            print(f"[cluster] event#{event.id} 素材刷新失败：{type(exc).__name__}: {exc}")
-    print(f"[cluster] event 素材刷新完成：{changed}/{len(events)} 条有更新")
+            logger.info(f"[cluster] event#{event.id} 素材刷新失败：{type(exc).__name__}: {exc}")
+    logger.info(f"[cluster] event 素材刷新完成：{changed}/{len(events)} 条有更新")
     return changed
 
 
@@ -352,13 +354,13 @@ async def cluster_new_topics() -> None:
 
         topics = await topics_dao.list_pending()
         events = await events_dao.list_for_cluster()
-        print(f"[cluster] 待处理 topic {len(topics)} 条，已有 event {len(events)} 条")
+        logger.info(f"[cluster] 待处理 topic {len(topics)} 条，已有 event {len(events)} 条")
         await _recompute_all_event_simhash(events_dao, events)
         await session.commit()
 
         if not topics:
             await _refresh_all_event_materials(session)
-            print("[cluster] 单次聚类完成")
+            logger.info("[cluster] 单次聚类完成")
             return
 
         for topic in topics:
@@ -377,7 +379,7 @@ async def cluster_new_topics() -> None:
                 for event in events:
                     event_hash = _parse_stored_simhash(event.simhash)
                     if event_hash is None:
-                        print(f"[cluster] event#{event.id} simhash 无效，跳过")
+                        logger.info(f"[cluster] event#{event.id} simhash 无效，跳过")
                         continue
                     dist = _hamming(topic_hash, event_hash)
 
@@ -409,7 +411,7 @@ async def cluster_new_topics() -> None:
                     cos_text = (
                         "快速匹配" if matched_cosine is None else f"余弦={matched_cosine:.4f}"
                     )
-                    print(
+                    logger.info(
                         f"[cluster] 合并成功：topic#{topic_id}《{title}》 -> "
                         f"event#{matched_event.id}（海明={matched_dist}，{cos_text}）"
                     )
@@ -421,18 +423,18 @@ async def cluster_new_topics() -> None:
                         topic_id, title, hot_score, str(topic_hash), embedding,
                     )
                     events.append(new_event)
-                    print(
+                    logger.info(
                         f"[cluster] 新建 event#{new_event.id}《{title}》"
                         f" <- topic#{topic_id}，simhash={topic_hash}"
                     )
                 await session.commit()
             except Exception as exc:
                 await session.rollback()
-                print(f"[cluster] topic#{topic_id}《{title}》处理失败，已跳过：{exc}")
+                logger.info(f"[cluster] topic#{topic_id}《{title}》处理失败，已跳过：{exc}")
 
         # 历史 event 也可能没有素材字段，统一兜底回填一次
         await _refresh_all_event_materials(session)
-        print("[cluster] 单次聚类完成")
+        logger.info("[cluster] 单次聚类完成")
 
 
 if __name__ == "__main__":

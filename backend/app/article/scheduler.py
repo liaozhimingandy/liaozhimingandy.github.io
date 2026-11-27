@@ -23,7 +23,9 @@ stop() 取消任务并等待正在执行的一轮结束，不做强杀。
     间隔设为 0 等价于关闭该阶段的定时执行（手动触发仍可用）。
 """
 
+
 from __future__ import annotations
+from ..core.logger import logger
 
 import asyncio
 import time
@@ -45,7 +47,7 @@ _LAST_CLUSTER: dict = {"finished_at": None, "ok": None}
 
 
 def _log(message: str) -> None:
-    print(f"[article-scheduler] {message}")
+    logger.info(f"[article-scheduler] {message}")
 
 
 def _now() -> str:
@@ -97,8 +99,15 @@ async def _loop(stage: str, interval_seconds: float) -> None:
     delay = config.article_scheduler_start_delay_sec()
     if delay > 0 and _stop_event is not None:
         _log(f"{label}任务就绪，{delay}s 后开始首轮（间隔 {interval_seconds:.0f}s）")
-        if await _stop_event.wait():
-            return
+        # 必须用带超时的 wait：到点进入首轮；期间 stop() 置位则提前退出。
+        # 旧写法 `await _stop_event.wait()` 无超时，正常运行时会一直阻塞到 stop，
+        # 导致首轮采集/聚合永远不执行。
+        try:
+            await asyncio.wait_for(_stop_event.wait(), timeout=delay)
+        except asyncio.TimeoutError:
+            pass  # 延迟结束，进入首轮
+        else:
+            return  # 被 stop() 唤醒，直接结束循环
     while _stop_event is not None and not _stop_event.is_set():
         try:
             if stage == "collect":
@@ -110,8 +119,15 @@ async def _loop(stage: str, interval_seconds: float) -> None:
             _log(f"{label}跳过本轮（{exc}）")
         except Exception:
             pass  # 异常已在 run_*_now 记录，循环继续
-        if _stop_event is not None and await _stop_event.wait(interval_seconds):
-            return
+        # Python 3.14 起 Event.wait() 不再接受 timeout 位置参数，
+        # 必须用 wait_for 实现「等一个间隔；期间被 stop 则退出」。
+        if _stop_event is not None:
+            try:
+                await asyncio.wait_for(_stop_event.wait(), timeout=interval_seconds)
+            except asyncio.TimeoutError:
+                pass  # 间隔到点，继续下一轮
+            else:
+                return  # 被 stop() 唤醒，退出循环
 
 
 async def start() -> dict:

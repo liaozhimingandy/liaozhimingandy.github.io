@@ -4,7 +4,7 @@
   1. 托管 Vite 构建产物（前端 SPA），并提供 history 路由回退；
   2. 提供元信息接口（health/version/auth-mode）与「工具注册表」API（全局元数据）；
   3. 提供「公共配置表」API（用户密文配置的云端存取）；
-  4. 提供 article 流水线 API（自媒体热点采集/聚合/文章生成，见 article_api.py，
+  4. 提供 article 流水线 API（自媒体热点采集/聚合/文章生成，见 app/article/router.py，
      后台调度在 lifespan 启停，可用 ARTICLE_SCHEDULER_ENABLED=0 关闭）。
 零知识边界：公共配置表存的 value 是不透明密文 blob。后端不定义账户/条目明文模型、
 不解密、不解析 value 内容、不记录明文，也不接触用户密钥。所有加解密在浏览器端完成。
@@ -18,7 +18,9 @@ passthrough/dev 模式下来自客户端声明的 X-User-Sub（**可伪造**，�
 passthrough 信任客户端声明的 X-User-Sub，正式多用户上线前必须切 logto（见 /v1/auth/mode）。
 """
 
+
 from __future__ import annotations
+from app.core.logger import logger
 
 from contextlib import asynccontextmanager
 
@@ -29,11 +31,11 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import config, runtime
+from app.article import router as article_router
 from app.article import scheduler as article_scheduler
-from app.article_api import router as article_router
-from app.configs import router as configs_router
-from app.portal_api import router as portal_router
-from app.portal_admin_api import router as portal_admin_router
+from app.portal import router as portal_router
+from app.portal import admin_router as portal_admin_router
+from app.portal import configs_router as configs_router
 from app.portal.models import PortalError
 from app.schemas import APP_ERROR_CODES, HealthResponse, ServiceStatus, VersionResponse
 
@@ -56,19 +58,28 @@ async def lifespan(app: FastAPI):
     from app.core.database import session_factory
 
     if not await database.init_db():
-        print("[db] 数据库不可用，已降级 SQLite 内存库（数据不落盘）")
+        logger.info("[db] 数据库不可用，已降级 SQLite 内存库（数据不落盘）")
+    # 生成任务恢复：重启遗留的 running/queued 自动接续——有 checkpoint 从
+    # 报错节点续跑、停在审核点的还原审批卡，不再一律标失败让用户重来。
+    from app.article import service as article_service
+    await article_service.migrate_task_columns()
+    await article_service.recover_stale_tasks()
+    # 存量时间列升级为 timestamptz（幂等；SQLite/降级引擎自动跳过）
+    await article_service.migrate_time_columns()
+    # article 表补 cover_image 列（存量库幂等补列，配图后处理落库用）
+    await article_service.migrate_article_columns()
     # 门户种子：幂等（按 code 缺席才插入），空库/内存库生效，已迁移的 PG 表自动跳过
     async with session_factory()() as session:
         await PortalService(session).seed_if_empty()
     store_label = config.store_backend()
-    print(
+    logger.info(
         f"[tools] frontend_ready={ready} dist={config.DIST_DIR} "
         f"store={store_label} auth={app.state.auth_provider.mode}"
     )
     if config.article_scheduler_enabled():
         await article_scheduler.start()
     else:
-        print("[article-scheduler] 已通过 ARTICLE_SCHEDULER_ENABLED=0 关闭")
+        logger.info("[article-scheduler] 已通过 ARTICLE_SCHEDULER_ENABLED=0 关闭")
     yield
     await article_scheduler.stop()
     await database.dispose_engine()
@@ -187,6 +198,18 @@ if config.DIST_DIR.is_dir():
     # 与前端 Vite base 保持一致。
     for _i, _mount_path in enumerate(config.assets_mount_paths()):
         app.mount(_mount_path, StaticFiles(directory=_assets_dir, check_dir=False), name=f"assets_{_i}")
+
+
+# 采集图片静态目录（image_store.IMAGE_DIR）：文章封面/正文配图按
+# /images/<热点文件夹>/<uuid7>.jpg 访问；基路径非根时补 /ap/images。
+# 注意必须在 SPA 回退路由之前挂载，否则 /images/* 会被兜底成 index.html。
+from app.article.image_store import IMAGE_DIR as _IMAGE_DIR  # noqa: E402
+
+_image_mount_paths = ["/images"]
+if config.public_prefix() and f"/{config.public_prefix()}/images" not in _image_mount_paths:
+    _image_mount_paths.append(f"/{config.public_prefix()}/images")
+for _i, _mount_path in enumerate(_image_mount_paths):
+    app.mount(_mount_path, StaticFiles(directory=_IMAGE_DIR, check_dir=False), name=f"images_{_i}")
 
 
 @app.get("/{full_path:path}", include_in_schema=False)

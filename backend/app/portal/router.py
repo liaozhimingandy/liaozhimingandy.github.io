@@ -20,7 +20,9 @@
   POST   /v1/portal/apps/{code}/launch
 
 分层：路由只做参数校验、身份注入与形状映射；业务在 portal/service.py；
-数据读写经 Depends(get_session) -> PortalService -> DAO。管理接口见 portal_admin_api.py。
+数据读写经 Depends(get_session) -> PortalService -> DAO。管理接口见 admin_router.py。
+
+由 app.portal 包在上一级统一导出（from app.portal import router）。
 
 安全契约：
   1. user_sub 只来自鉴权 provider，path/query/body 的用户标识一律忽略。
@@ -34,12 +36,10 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from .core.database import get_session
-from .auth import AuthProvider, Principal, UnauthorizedError
-from .portal.models import (
-    PortalError,
-)
-from .portal.service import PortalService
+from ..auth import AuthProvider, Principal, UnauthorizedError
+from ..core.database import get_session
+from .models import PortalError
+from .service import PortalService
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 router = APIRouter()
@@ -79,7 +79,7 @@ def require_principal(request: Request) -> Principal:
 
 def require_admin(principal: Principal = Depends(require_principal)) -> Principal:
     """管理员校验：白名单为空时 fail-closed，绝不裸奔。"""
-    from .core.config import get_settings
+    from ..core.config import get_settings
 
     admins = get_settings().portal_admin_sub_set
     if not admins or principal.sub not in admins:
@@ -182,7 +182,7 @@ async def my_capabilities(
     principal: Principal | None = Depends(optional_principal),
 ) -> dict[str, Any]:
     """返回「我自己」的门户能力，匿名也正常返回。"""
-    from .core.config import get_settings
+    from ..core.config import get_settings
 
     admins = get_settings().portal_admin_sub_set
     is_admin = bool(principal and admins and principal.sub in admins)

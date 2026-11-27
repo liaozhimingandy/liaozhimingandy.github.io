@@ -13,6 +13,12 @@ __pycache__/
 .pytest_cache/
 .venv/
 
+# article 采集运行产物（下载的图片与话题缓存，非源码）
+backend/app/article/images/
+
+# 后端运行日志（ERROR+ 按天轮转，保留 7 天）
+backend/logs/
+
 # Log files
 npm-debug.log*
 yarn-debug.log*

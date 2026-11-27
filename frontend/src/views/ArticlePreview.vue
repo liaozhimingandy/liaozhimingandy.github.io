@@ -117,14 +117,14 @@ function isImageOnlyInline(token: MdTokenLike): boolean {
  * 独占一段的图片不再包 <p>，让 <figure> 直接落在外层，
  * 避免 <p><figure> 非法嵌套导致后台编辑器粘贴时被改写结构。
  */
-md.renderer.rules.paragraph_open = (tokens, idx, options, env, self): string => {
+md.renderer.rules.paragraph_open = (tokens, idx, options, _env, self): string => {
   const next = tokens[idx + 1]
   if (next && next.type === 'inline' && isImageOnlyInline(next as unknown as MdTokenLike)) {
     return ''
   }
   return self.renderToken(tokens, idx, options)
 }
-md.renderer.rules.paragraph_close = (tokens, idx, options, env, self): string => {
+md.renderer.rules.paragraph_close = (tokens, idx, options, _env, self): string => {
   const prev = tokens[idx - 1]
   if (prev && prev.type === 'inline' && isImageOnlyInline(prev as unknown as MdTokenLike)) {
     return ''

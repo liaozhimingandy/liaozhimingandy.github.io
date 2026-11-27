@@ -107,10 +107,17 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/website/views/ResumePage.vue'),
     meta: { title: '简历信息', website: true },
   },
-    {
+    // AI 文章工作台：选题 -> 生成 -> 预览 -> 复制发布（含旧 /article/preview/ 直达预览）
+  {
+    path: '/article/studio/',
+    name: 'article_studio',
+    component: () => import('@/views/ArticleStudioView.vue'),
+    meta: { title: 'AI文章工作台' },
+  },
+  {
     path: '/article/preview/',
     name: 'article_preview',
-    component: () => import('@/views/ArticlePreview.vue'),
+    component: () => import('@/views/ArticleStudioView.vue'),
     meta: { title: 'AI文章预览', website: true },
   },
   {

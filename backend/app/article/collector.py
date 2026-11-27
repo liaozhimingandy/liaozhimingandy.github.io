@@ -13,6 +13,8 @@
     py -3.13 -m app.article.pipeline --stage collect
 """
 
+from ..core.logger import logger
+
 import asyncio
 import json
 import re
@@ -102,7 +104,7 @@ def fetch_weibo_hot():
     try:
         resp = requests.get(url, headers=WEIBO_HEADERS, timeout=15)
         if resp.status_code == 403:
-            print(f"❌ 微博热搜 403，响应体：{resp.text[:200]}")
+            logger.error(f"❌ 微博热搜 403，响应体：{resp.text[:200]}")
             return []
         resp.raise_for_status()
         data = resp.json()
@@ -130,12 +132,64 @@ def fetch_weibo_hot():
                 "source": "weibo",
                 "hot_score": hot_score,
             })
-        print(f"✅ 微博热搜拿到 {len(res)} 条")
+        logger.info(f"✅ 微博热搜拿到 {len(res)} 条")
         return res
     except Exception as e:
         detail = f" | 响应体：{resp.text[:200]}" if resp is not None else ""
-        print(f"❌ 微博热搜抓取失败：{e}{detail}")
+        logger.error(f"❌ 微博热搜抓取失败：{e}{detail}")
         return []
+
+
+# JSON 标准转义字符：b f n r t u 以及引号、反斜杠、斜杠。
+# 百度 s-data 曾有热搜正文含 "\\-" 这类非标准转义，json.loads 直接报 Invalid \escape。
+_JSON_VALID_ESCAPES = frozenset('bfnrtu"\\/')
+
+
+def _sanitize_json_escapes(raw: str) -> str:
+    """把 s-data 里的非法 JSON 转义的「反斜杠」补成合法转义，不动合法转义。
+
+    逐字符扫描而非正则：正则的负向前瞻会误伤已经合法转义的 "\\\\"（第二个 \\ 被
+    当作新转义起点）。这里遇到 \\ 时先看下一个字符：合法转义原样保留；非法转义
+    只把 \\ 本身写成 \\\\，后续字符照抄，语义上等价于把字面量反斜杠保留下来。
+    """
+    out: list[str] = []
+    i = 0
+    n = len(raw)
+    while i < n:
+        ch = raw[i]
+        if ch == "\\" and i + 1 < n:
+            nxt = raw[i + 1]
+            if nxt in _JSON_VALID_ESCAPES:
+                out.append(ch)
+                out.append(nxt)
+                i += 2
+                continue
+            out.append("\\\\")
+            i += 1
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def parse_baidu_s_data(raw_json: str) -> list[dict]:
+    """解析百度 s-data：先原样 json.loads，失败再用非法转义修复重试。"""
+    try:
+        data = json.loads(raw_json)
+    except json.JSONDecodeError:
+        data = json.loads(_sanitize_json_escapes(raw_json))
+    res: list[dict] = []
+    for card in data["data"]["cards"]:
+        for item in card["content"]:
+            title = item.get("word", "")
+            hot_score = item.get("hotScore", 0)
+            if title:
+                res.append({
+                    "title": title,
+                    "source": "baidu",
+                    "hot_score": int(hot_score),
+                })
+    return res
 
 
 def fetch_baidu_hot():
@@ -146,26 +200,13 @@ def fetch_baidu_hot():
         # 正则提取注释里的s-data
         match = re.search(r'<!--s-data:(.*?)-->', resp.text, re.S)
         if not match:
-            print("❌ 百度热搜：没有找到s-data")
+            logger.error("❌ 百度热搜：没有找到s-data")
             return []
-        raw_json = match.group(1)
-        data = json.loads(raw_json)
-        res = []
-        # 遍历cards
-        for card in data["data"]["cards"]:
-            for item in card["content"]:
-                title = item.get("word", "")
-                hot_score = item.get("hotScore", 0)
-                if title:
-                    res.append({
-                        "title": title,
-                        "source": "baidu",
-                        "hot_score": int(hot_score)
-                    })
-        print(f"✅ 百度热搜拿到 {len(res)} 条")
+        res = parse_baidu_s_data(match.group(1))
+        logger.info(f"✅ 百度热搜拿到 {len(res)} 条")
         return res
     except Exception as e:
-        print(f"❌ 百度热搜抓取失败：{e}")
+        logger.error(f"❌ 百度热搜抓取失败：{e}")
         return []
 
 
@@ -222,16 +263,16 @@ async def claim_news_url(url: str, topic: str = "",
 
     key = normalize_news_url(url)
     if not key:
-        print(f"  ⏭️ 链接无法规范化，跳过：{url[:80]} <- {topic}")
+        logger.info(f"  ⏭️ 链接无法规范化，跳过：{url[:80]} <- {topic}")
         return False
     with _COLLECTED_URL_LOCK:
         if key in _COLLECTED_URL_KEYS:
-            print(f"  ⏭️ 跳过重复链接（本次运行）：{url[:80]} <- {topic}")
+            logger.info(f"  ⏭️ 跳过重复链接（本次运行）：{url[:80]} <- {topic}")
             return False
         # 先占位，避免同一链接被后续热点再次抓；采集失败也不重复尝试
         _COLLECTED_URL_KEYS.add(key)
     if news_dao is not None and await news_dao.is_collected(url):
-        print(f"  ⏭️ 跳过已入库链接：{url[:80]} <- {topic}")
+        logger.info(f"  ⏭️ 跳过已入库链接：{url[:80]} <- {topic}")
         return False
     return True
 
@@ -288,7 +329,7 @@ def fetch_news_urls_by_topic(topic: str):
                     # SearXNG 的封面缩略图（字符串 URL 或 {src:...} 字典，统一提取）
                     "thumbnail": extract_thumbnail_url(item.get("thumbnail")),
                 })
-            print(
+            logger.info(
                 f"【{topic}】searxng返回{len(results)}条，"
                 f"同话题重复跳过{dup_skipped}条，过滤后保留{len(out_urls)}条"
             )
@@ -297,19 +338,19 @@ def fetch_news_urls_by_topic(topic: str):
             last_error = f"{type(exc).__name__}: {exc}"
             if attempt < MAX_SEARCH_RETRIES:
                 delay = SEARCH_RETRY_BASE_DELAY * (2 ** attempt)
-                print(
+                logger.info(
                     f"【{topic}】搜索失败（{last_error}），{delay:.1f}s 后重试 "
                     f"{attempt + 1}/{MAX_SEARCH_RETRIES}"
                 )
                 time.sleep(delay)
-    print(f"【{topic}】搜索失败，已重试 {MAX_SEARCH_RETRIES} 次：{last_error}")
+    logger.info(f"【{topic}】搜索失败，已重试 {MAX_SEARCH_RETRIES} 次：{last_error}")
     return []
 
 
 def extract_article(url: str, topic: str = ""):
     """正文/图片抓取与提取（同步阻塞，由 to_thread 调用）。"""
     if trafilatura is None:
-        print(f"❌ trafilatura 未安装，无法提取正文（pip install trafilatura）：{url}")
+        logger.error(f"❌ trafilatura 未安装，无法提取正文（pip install trafilatura）：{url}")
         return None
     try:
         resp = requests.get(url, headers=ARTICLE_HEADERS, timeout=15)
@@ -370,11 +411,11 @@ def extract_article(url: str, topic: str = ""):
             "failed_images": failed_imgs,  # 下载失败的候选，便于排查防盗链
         }
         if len(text) < 250:
-            print(f"⚠️ 正文过短，丢弃：{url}")
+            logger.warning(f"⚠️ 正文过短，丢弃：{url}")
             return None
         return article
     except Exception as e:
-        print(f"❌ 采集异常 {url} | {e}")
+        logger.error(f"❌ 采集异常 {url} | {e}")
         return None
 
 
@@ -385,7 +426,7 @@ async def run_collect() -> dict:
     立即 commit，采集进行到一半崩溃不至于整轮白跑。
     """
     if trafilatura is None:
-        print(f"❌ 采集阶段依赖缺失（trafilatura：{_TRAFILATURA_ERROR}），本次跳过")
+        logger.error(f"❌ 采集阶段依赖缺失（trafilatura：{_TRAFILATURA_ERROR}），本次跳过")
         return {"topics": 0, "articles": 0, "skipped": 0, "error": "deps_missing"}
 
     stats = {"topics": 0, "articles": 0, "skipped": 0}
@@ -400,22 +441,22 @@ async def run_collect() -> dict:
         valid_hot = [h for h in all_hot if filter_hot_topic(h["title"])]
         inserted = await topic_dao.save_topics(valid_hot)
         await session.commit()
-        print(f"[collector] 热点入库：提交 {len(valid_hot)} 条，新增 {inserted} 条")
+        logger.info(f"[collector] 热点入库：提交 {len(valid_hot)} 条，新增 {inserted} 条")
         stats["topics"] = len(valid_hot)
 
         # 按热度从高到低排序
         valid_hot.sort(key=lambda x: x["hot_score"], reverse=True)
 
         if not valid_hot:
-            print("没有可用热点，退出")
+            logger.info("没有可用热点，退出")
             return stats
 
         for idx, hot in enumerate(valid_hot[:MAX_TOPICS]):
             if idx:
                 await asyncio.sleep(TOPIC_INTERVAL)
-            print(f"\n===== 热点：{hot['title']} ({hot['source']}, {hot['hot_score']}) =====")
+            logger.info(f"\n===== 热点：{hot['title']} ({hot['source']}, {hot['hot_score']}) =====")
             topic_dir, folder = get_topic_dir(hot['title'])
-            print(f"📁 图片目录：images/{folder}/（标题映射记录于 images/topics.json）")
+            logger.info(f"📁 图片目录：images/{folder}/（标题映射记录于 images/topics.json）")
             data = await asyncio.to_thread(fetch_news_urls_by_topic, hot['title'])
             for item in data:
                 # 跨热点、跨运行拦截重复链接；命中就不发正文请求，更不重复下载图片
@@ -430,11 +471,11 @@ async def run_collect() -> dict:
                     thumbnail = await asyncio.to_thread(
                         save_thumbnail, item["thumbnail"], item["url"], hot["title"])
                 if article:
-                    print(f"标题：{article['title']} | 文章链接：{article['url']} | 正文 {len(article['text'])} 字 | 图片 {len(article['images'])} 张")
+                    logger.info(f"标题：{article['title']} | 文章链接：{article['url']} | 正文 {len(article['text'])} 字 | 图片 {len(article['images'])} 张")
                     if thumbnail:
-                        print(f"  🎯 封面缩略图：{thumbnail}  <-  {item['thumbnail']}")
+                        logger.info(f"  🎯 封面缩略图：{thumbnail}  <-  {item['thumbnail']}")
                     for img in article['images']:
-                        print(f"  🖼️ {img['img_url']}  <-  {img['source_url']}")
+                        logger.info(f"  🖼️ {img['img_url']}  <-  {img['source_url']}")
                     art = {
                         "url": article["url"],
                         "title": article.get("title", ""),
@@ -455,7 +496,7 @@ async def run_collect() -> dict:
                         stats["articles"] += 1
                 elif thumbnail:
                     # 正文抓取失败但缩略图拿到了：不建 news 记录（缺正文），只提示留痕
-                    print(f"  ⚠️ 正文抓取失败，封面缩略图暂存未入库：{thumbnail}")
+                    logger.warning(f"  ⚠️ 正文抓取失败，封面缩略图暂存未入库：{thumbnail}")
 
     return stats
 
