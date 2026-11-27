@@ -206,6 +206,14 @@ class ArticleGenerationTask(SQLModel, table=True):
     review_title: str = ""
     review_content: str = Field(default="", sa_column=Column(Text))
     review_options: list[Any] = Field(default_factory=list, sa_column=Column(JSON))
+    # worker 模式专用：API 审批接口把决定写进表里（不做进程内执行），
+    # worker 领取后消费（构造 resume Command）并清空，防止重复消费。
+    review_decision: str = ""       # pass / modify / reject（空=没有待消费的决定）
+    review_suggest: str = Field(default="", sa_column=Column(Text))
+    # 领用与心跳：worker CAS 领取时写入；心跳超时的 running 任务可被其他
+    # worker（或重启后的自己）接管续跑，checkpoint 保证从断点继续。
+    claimed_by: str = ""            # 领用者标识（worker 进程 id）
+    heartbeat_at: str = ""          # 最近一次段执行完成时间（ISO 带时区）
 
 
 class GenerationTask(BaseModel):
@@ -230,6 +238,11 @@ class GenerationTask(BaseModel):
     review_title: str = ""
     review_content: str = ""
     review_options: list[str] = Field(default_factory=list)
+    # worker 模式：待消费的审批决定与领用痕迹（内部编排字段，前端可忽略）
+    review_decision: str = ""
+    review_suggest: str = ""
+    claimed_by: str = ""
+    heartbeat_at: str = ""
 
     @classmethod
     def from_row(cls, row: ArticleGenerationTask) -> "GenerationTask":
@@ -252,6 +265,10 @@ class GenerationTask(BaseModel):
             review_title=row.review_title,
             review_content=row.review_content,
             review_options=[str(o) for o in (row.review_options or [])],
+            review_decision=str(row.review_decision or ""),
+            review_suggest=str(row.review_suggest or ""),
+            claimed_by=str(row.claimed_by or ""),
+            heartbeat_at=str(row.heartbeat_at or ""),
         )
 
 

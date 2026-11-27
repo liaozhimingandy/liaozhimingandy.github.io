@@ -41,3 +41,9 @@ article = [
 ml = [
     "sentence-transformers>=3.0",  # all-MiniLM-L6-v2 向量模型
 ]
+# 开发调试：LangGraph 检查点 SQLite（AP_CHECKPOINT_SQLITE 指定文件路径时启用）。
+# 生产用 PostgresSaver（langgraph-checkpoint-postgres，已进默认依赖），无需此 extra。
+#   uv sync --extra dev
+dev = [
+    "langgraph-checkpoint-sqlite>=2.0",
+]

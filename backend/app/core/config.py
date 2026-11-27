@@ -109,12 +109,28 @@ class Settings(BaseSettings):
         False, description="触发生成是否要求管理员")
     ARTICLE_HITL_ENABLED: bool = Field(
         True, description="文章生成是否需要人工审核（大纲/终审）；False 时自动通过")
+    # 执行模式：inline=API 进程内后台协程执行（开发/单机默认，零部署成本）；
+    # worker=API 只把任务写进 article_generation_task 表，由独立常驻 worker
+    # 进程（python -m app.article.worker）轮询领取并在 ThreadPoolExecutor 里执行。
+    # 两种模式互斥：不要同时开 inline API 与 worker，否则会双重消费任务。
+    ARTICLE_EXECUTION_MODE: str = Field(
+        "inline", description="任务执行模式：inline=API 内联执行 / worker=独立 worker 进程执行")
+    ARTICLE_WORKER_POLL_INTERVAL: float = Field(
+        3.0, description="worker 轮询任务表的间隔（秒）")
+    ARTICLE_WORKER_CONCURRENCY: int = Field(
+        2, description="worker ThreadPoolExecutor 线程数（并行执行的图段数）")
+    ARTICLE_WORKER_STALE_SECONDS: int = Field(
+        900, description="running 任务心跳超时秒数；超过后 worker 视前执行者失联并接管续跑"
+                         "（须大于单个工作流节点最长耗时）")
 
     # ------------------------------------------------------------------ LLM（文章生成）
     LLM_BASE_URL: str = Field("https://llm.alsoapp.com/v1", description="OpenAI 兼容端点")
     LLM_API_KEY: str = Field("", description="LLM API Key")
     LLM_MODEL: str = Field("aim-1", description="生成模型名")
     LLM_RETRIES: int = Field(2, description="LLM 调用失败重试次数")
+    AP_CHECKPOINT_SQLITE: str = Field(
+        "", description="LangGraph 检查点 SQLite 文件路径（开发调试用）；"
+                        "空=按 database_dsn 走 Postgres，无 DSN 时用进程内内存")
 
     # ===================== 计算属性（派生值，环境变量不可覆盖） =====================
 

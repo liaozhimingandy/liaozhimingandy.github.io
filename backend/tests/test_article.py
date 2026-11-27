@@ -537,7 +537,7 @@ class TestArticleServiceTasks(unittest.IsolatedAsyncioTestCase):
 
         with mock.patch.object(service, "_has_checkpoint",
                                new=mock.AsyncMock(return_value=True)), \
-             mock.patch("app.article.llm.pending_interrupt", return_value=interrupt):
+             mock.patch("app.article.graph.runner.pending_interrupt", return_value=interrupt):
             count = await service.recover_stale_tasks()
         self.assertEqual(count, 1)
         snap = await service.get_task(task.task_id)
@@ -600,7 +600,7 @@ class TestArticleServiceTasks(unittest.IsolatedAsyncioTestCase):
                                new=mock.AsyncMock(return_value=True)), \
              mock.patch.object(service, "_apply_step_result",
                                side_effect=_fake_apply), \
-             mock.patch("app.article.llm.run_graph_step",
+             mock.patch("app.article.graph.runner.run_graph_step",
                         side_effect=_fake_graph_step), \
              mock.patch("asyncio.sleep", new=mock.AsyncMock()):
             status = await service.run_generation_segment(task.task_id, {"x": 1})
@@ -877,7 +877,7 @@ class TestHitlSegmentedExecution(unittest.IsolatedAsyncioTestCase):
 
         from langgraph.checkpoint.memory import MemorySaver
         from langgraph.graph import END, START, StateGraph
-        from app.article import llm
+        from app.article.graph import runner as llm
 
         class S(TypedDict):
             calls: int
@@ -913,7 +913,7 @@ class TestHitlSegmentedExecution(unittest.IsolatedAsyncioTestCase):
         from langgraph.checkpoint.memory import MemorySaver
         from langgraph.graph import END, START, StateGraph
         from langgraph.types import interrupt
-        from app.article import llm
+        from app.article.graph import runner as llm
 
         class S(TypedDict):
             log: list
@@ -946,7 +946,7 @@ class TestHitlSegmentedExecution(unittest.IsolatedAsyncioTestCase):
         回归 bug：审核节点漏 import interrupt 时，mock graph 测试全绿，
         但真实运行报 NameError，任务永远卡在 running。此测试直接触发真实节点。
         """
-        from app.article import llm
+        from app.article.graph import nodes, runner as llm
 
         def fake_invoke(system: str, user: str) -> str:
             if any(k in system for k in ("多平台", "公众号")):
@@ -959,7 +959,7 @@ class TestHitlSegmentedExecution(unittest.IsolatedAsyncioTestCase):
             "source_contents": ["素材"], "source_urls": [],
         }
         tid = "thread-real-778"
-        with mock.patch.object(llm, "_invoke", side_effect=fake_invoke):
+        with mock.patch.object(nodes, "_invoke", side_effect=fake_invoke):
             r1 = llm.run_graph_step(llm.initial_state_from_material(material), tid)
             self.assertEqual(r1["status"], "paused")
             self.assertEqual(r1["stage"], "outline")
@@ -978,7 +978,7 @@ class TestHitlSegmentedExecution(unittest.IsolatedAsyncioTestCase):
         回归背景：人工审核做成可配置后，关闭时必须真的跳过两个 interrupt，
         任务从 queued 直接跑完，前端不会再收到审批卡。
         """
-        from app.article import llm
+        from app.article.graph import nodes, runner as llm
 
         def fake_invoke(system: str, user: str) -> str:
             if any(k in system for k in ("多平台", "公众号")):
@@ -991,7 +991,7 @@ class TestHitlSegmentedExecution(unittest.IsolatedAsyncioTestCase):
             "source_contents": ["素材"], "source_urls": [],
         }
         tid = "thread-noreview-779"
-        with mock.patch.object(llm, "_invoke", side_effect=fake_invoke):
+        with mock.patch.object(nodes, "_invoke", side_effect=fake_invoke):
             r = llm.run_graph_step(
                 llm.initial_state_from_material(material, need_review=False), tid)
             self.assertEqual(r["status"], "done")

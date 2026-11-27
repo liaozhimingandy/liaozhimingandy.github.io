@@ -17,7 +17,7 @@ from ...core.logger import logger
 import json
 from typing import Any
 
-from sqlalchemy import delete, or_
+from sqlalchemy import and_, delete, or_
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -475,6 +475,50 @@ class TaskDAO(BaseDAO[ArticleGenerationTask]):
             ArticleGenerationTask.status.in_(("queued", "running")),
         )
         return list((await self._execute(stmt, "list_stale")).all())
+
+    async def list_claimable(self, stale_before: str = "") -> list[ArticleGenerationTask]:
+        """worker 可领取的任务（按 id 升序，先到先服务）：
+          - status=queued：新登记 / 审批决定已记录 / 手动重试的任务；
+          - status=running 且心跳超时（heartbeat_at 早于 stale_before 或为空）：
+            前一个执行者失联（进程被杀），checkpoint 在，接管后可断点续跑。
+        """
+        conds = [ArticleGenerationTask.status == "queued"]
+        if stale_before:
+            conds.append(and_(
+                ArticleGenerationTask.status == "running",
+                or_(ArticleGenerationTask.heartbeat_at == "",
+                    ArticleGenerationTask.heartbeat_at <= stale_before),
+            ))
+        stmt = (
+            select(ArticleGenerationTask)
+            .where(or_(*conds))
+            .order_by(ArticleGenerationTask.id)
+        )
+        return list((await self._execute(stmt, "list_claimable")).all())
+
+    async def claim(self, task_id: str, worker_id: str, heartbeat_at: str,
+                    expect_status: str = "queued") -> bool:
+        """CAS 领取任务：仅当状态仍为 expect_status 时置 running 并记领用者。
+
+        多 worker（或 worker 与重启恢复）并发抢同一任务时，只有一个 UPDATE
+        能命中（rowcount=1），其余落空——以 DB 行为唯一裁决，进程内无需加锁。
+        DAO 只 flush 不 commit，事务出口在调用方 session_scope。
+        """
+        result = await self.exec_write(
+            ArticleGenerationTask.__table__.update()
+            .where(
+                ArticleGenerationTask.task_id == task_id,
+                ArticleGenerationTask.status == expect_status,
+            )
+            .values(
+                status="running",
+                claimed_by=str(worker_id),
+                heartbeat_at=str(heartbeat_at),
+                current_step="running",
+            ),
+            "claim",
+        )
+        return bool(result.rowcount)
 
     async def prune(self, keep: int) -> int:
         """裁剪历史：只保留最近 keep 条，返回删除条数。"""

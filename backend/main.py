@@ -31,8 +31,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import config, runtime
-from app.article import router as article_router
+from app.article.router import router as article_router
 from app.article import scheduler as article_scheduler
+from app.article.graph.router import router as article_graph_router
 from app.portal import router as portal_router
 from app.portal import admin_router as portal_admin_router
 from app.portal import configs_router as configs_router
@@ -184,6 +185,9 @@ app.include_router(portal_admin_router)
 
 # 自媒体热点文章流水线（话题选择 -> 生成任务 -> 文章查询）
 app.include_router(article_router)
+
+# 工作流调试/编排接口（SSE 流式执行、状态/快照、DAG 图结构，供前端画布）
+app.include_router(article_graph_router)
 
 
 # --------------------------------------------------------------------------- #

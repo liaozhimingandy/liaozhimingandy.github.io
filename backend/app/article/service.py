@@ -4,11 +4,19 @@
 数据读写只走 dal（BaseDAO + 各表 DAO）；DAO 只 flush 不 commit，
 事务出口统一在本层（读操作免提交，写操作完成后显式 commit）。
 
-生成任务模型（持久化）：
-    generate_for_event(event_id) 在 article_generation_task 表登记任务并提交
-    asyncio 后台协程，立即返回任务快照；状态推进
+生成任务模型（持久化 + 双执行模式）：
+    generate_for_event(event_id) 在 article_generation_task 表登记任务并
+    立即返回任务快照；状态推进
     queued -> running -> waiting_approval -> running -> done / failed，
     每一步都落库，前端轮询 GET /v1/articles/tasks/{id} 直接查表。
+
+    任务由谁执行由 ARTICLE_EXECUTION_MODE 决定（两种模式互斥，不要并存）：
+      - inline（默认）：API 进程内后台 asyncio 协程编排，LangGraph 段经
+        GraphService 在默认线程池里执行——开发/单机零部署成本；
+      - worker：API 只登记任务/记录审批决定（写表即投递），由独立常驻
+        worker 进程（python -m app.article.worker）轮询领取，在它的
+        ThreadPoolExecutor 里执行。两模式共用同一张任务表与同一套
+        状态机，前端无感知。
 
     运行上下文（素材 / thread_id / article_uuid）不存内存：每段开始时凭
     event_id 重读素材、从任务表读检查点标识。进程重启后任务仍在，
@@ -16,8 +24,10 @@
 
 并发约束：
     - 同一 event 同时只允许一个进行中任务（queued/running/waiting_approval 视为占用）；
-    - 全局同一时刻只跑一个生成任务（进程内 asyncio.Lock，LLM 串行）；
-    - 服务重启时 recover_stale_tasks() 把无人接管的 running/queued 标记失败。
+    - inline 模式全局同一时刻只跑一个生成任务（进程内 asyncio.Lock，LLM 串行）；
+      worker 模式并发度由 ARTICLE_WORKER_CONCURRENCY 线程池决定；
+    - inline 模式服务重启时 recover_stale_tasks() 接续遗留任务；
+      worker 模式的接管由 worker 心跳扫描完成（heartbeat_at 超时即认领）。
 """
 
 
@@ -25,8 +35,9 @@ from __future__ import annotations
 from ..core.logger import logger
 
 import asyncio
+import contextlib
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -72,17 +83,29 @@ def _log(message: str) -> None:
     logger.info(f"[article-service] {message}")
 
 
+MODE_INLINE = "inline"
+MODE_WORKER = "worker"
+
+
+def execution_mode() -> str:
+    """任务执行模式：inline（API 进程内执行）或 worker（独立进程执行）。
+
+    独立函数而非内联读配置：worker 模式的测试可以 patch 这个入口。
+    """
+    return get_settings().ARTICLE_EXECUTION_MODE
+
+
 def generator_available() -> dict:
     """生成能力可用性：langgraph 依赖是否装好、LLM_API_KEY 是否配置。
 
-    密钥判定必须与 llm.py 同源走 Settings 单例——pydantic-settings 从
+    密钥判定必须与生成配置（graph/config.py）同源走 Settings 单例——pydantic-settings 从
     backend/.env 读取后不会写回 os.environ，用 os.getenv 会把已配置的密钥
     误判为「未配置」，导致生成接口一直返回 503 GENERATOR_UNAVAILABLE。
     """
     deps_ok = True
     deps_error = ""
     try:
-        from . import llm  # noqa: F401  懒加载探测
+        from .graph import runner as graph_runner  # noqa: F401  懒加载探测
     except Exception as exc:
         deps_ok = False
         deps_error = f"{type(exc).__name__}: {exc}"
@@ -304,7 +327,7 @@ async def _fail_task(task_id: str, message: str) -> str:
 
 async def _finalize_done(task_id: str, ctx: dict) -> str:
     """把已完成的 state 落库并标记任务完成（async：含 DB IO）。"""
-    from . import llm
+    from .graph.service import get_graph_service
     from ..core import session_scope
 
     state = ctx["final_state"]
@@ -312,7 +335,7 @@ async def _finalize_done(task_id: str, ctx: dict) -> str:
         svc = ArticleService(session)
         article_id = await svc.save_generation_result(
             ctx["material"], ctx["thread_id"], ctx["article_uuid"],
-            state, llm.LLM_MODEL,
+            state, get_graph_service().model,
         )
     await _update_task(
         task_id,
@@ -356,45 +379,68 @@ SEGMENT_MAX_ATTEMPTS = 3
 SEGMENT_RETRY_DELAY = 3.0
 
 
-async def _has_checkpoint(thread_id: str) -> bool:
-    """thread 是否已有 LangGraph checkpoint（可断点续跑）。"""
-    from . import llm
+async def _has_checkpoint(thread_id: str, executor=None) -> bool:
+    """thread 是否已有 LangGraph checkpoint（可断点续跑）。
+
+    executor：调用方的工作线程池（worker 传入自己的 ThreadPoolExecutor）；
+    None 时走默认线程（inline 模式）。
+    """
+    from .graph.service import get_graph_service
 
     try:
-        return await asyncio.to_thread(llm.has_checkpoint, thread_id)
+        loop = asyncio.get_running_loop()
+        return bool(await loop.run_in_executor(
+            executor, get_graph_service().has_checkpoint, thread_id))
     except Exception:
         return False
 
 
-async def run_generation_segment(task_id: str, step_input: dict | object | None) -> str:
+async def run_generation_segment(task_id: str, step_input: dict | object | None,
+                                 executor=None, serialize: bool = True) -> str:
     """执行一段工作流并更新任务状态，返回新的 status。
 
-    step_input：首次为 initial state dict；resume 由 llm.resume_command 构造；
-    None 表示从最后 checkpoint 续跑。
+    step_input：首次为 initial state dict；resume 由 GraphService.resume_command
+    构造；None 表示从最后 checkpoint 续跑。
+
+    executor：执行 LangGraph 段的线程池（concurrent.futures.Executor）。
+        inline 模式传 None（默认线程）；worker 进程传自己的
+        ThreadPoolExecutor——这就是「线程池执行 langgraph 任务」的接缝，
+        FastAPI 路由层与 worker 线程传不同参数、共用同一实现。
+
+    serialize：是否用进程内全局锁串行（inline 模式 True，LLM 网关单并发）；
+        worker 模式传 False，并发度由线程池大小决定。
 
     瞬时故障重试：LangGraph 在每个节点执行前落 checkpoint，节点失败时
     checkpoint 停在「该节点执行前」——重试改传 None 即可从报错节点继续，
     已完成的节点不会重复消耗 LLM 调用。重试耗尽才标记失败。
     """
-    from . import llm
+    from .graph.service import get_graph_service
 
+    svc = get_graph_service()
     ctx = await _load_run_ctx(task_id)
     if ctx is None or not ctx["thread_id"]:
         return await _fail_task(task_id, "任务记录或检查点标识丢失，请重新生成")
 
     snapshot = await _get_task_snapshot(task_id)
-    running_fields = {"status": TASK_STATUS_RUNNING, "current_step": "running"}
+    running_fields = {
+        "status": TASK_STATUS_RUNNING,
+        "current_step": "running",
+        # 心跳：worker 失联接管 / 运行可观测性都看这个字段（段级粒度）
+        "heartbeat_at": _now(),
+    }
     if snapshot is not None and not snapshot.started_at:
         running_fields["started_at"] = _now()
     await _update_task(task_id, **running_fields)
 
+    loop = asyncio.get_running_loop()
     first_input = step_input
     result: dict = {}
     for attempt in range(1, SEGMENT_MAX_ATTEMPTS + 1):
         try:
-            async with _GENERATION_LOCK:
-                result = await asyncio.to_thread(
-                    llm.run_graph_step, step_input, ctx["thread_id"],
+            lock_ctx = _GENERATION_LOCK if serialize else contextlib.nullcontext()
+            async with lock_ctx:
+                result = await loop.run_in_executor(
+                    executor, svc.run_step, step_input, ctx["thread_id"],
                 )
         except Exception as exc:
             result = {"status": "error", "state": {}, "interrupt": None,
@@ -404,10 +450,18 @@ async def run_generation_segment(task_id: str, step_input: dict | object | None)
         # 瞬时故障：退避后从断点续跑；thread 还没有任何 checkpoint（首段
         # 就失败且没落上）时退回用原始输入重试
         await asyncio.sleep(SEGMENT_RETRY_DELAY * attempt)
-        step_input = None if await _has_checkpoint(ctx["thread_id"]) else first_input
+        step_input = None if await _has_checkpoint(ctx["thread_id"], executor) else first_input
         _log(f"任务 {task_id} 第 {attempt} 次执行失败，"
              f"{'从断点续跑' if step_input is None else '从头重试'}："
              f"{result.get('error_msg')}")
+
+    # 段结束：记录执行到的节点 + 刷新心跳（无论成败，接管方据此判断失联）
+    await _update_task(
+        task_id,
+        current_step=str(result.get("last_node") or result.get("stage")
+                         or result.get("status") or "running"),
+        heartbeat_at=_now(),
+    )
 
     new_status = await _apply_step_result(task_id, result, ctx)
     if new_status == "NEEDS_FINALIZE":
@@ -440,7 +494,7 @@ async def generate_for_event(event_id: int, need_review: bool | None = None) -> 
     if existing:
         raise RuntimeError(f"event_busy: {existing}")
 
-    from . import llm  # 懒加载
+    from .graph.service import get_graph_service  # 懒加载
 
     if need_review is None:
         need_review = bool(get_settings().ARTICLE_HITL_ENABLED)
@@ -452,14 +506,19 @@ async def generate_for_event(event_id: int, need_review: bool | None = None) -> 
                                 article_uuid, need_review=bool(need_review))
     _log(f"任务已提交：{task.task_id} event={event_id}《{task.event_title}》"
          f" need_review={need_review}")
-    # 首段（生成大纲）是长耗时 LLM 调用，必须在后台任务里跑，
+
+    # worker 模式：写表即投递，独立 worker 进程轮询领取执行（见 worker.py）
+    if execution_mode() == MODE_WORKER:
+        return await _get_task_snapshot(task.task_id) or task
+
+    # inline 模式：首段（生成大纲）是长耗时 LLM 调用，必须在后台任务里跑，
     # 否则 POST 会阻塞到大纲生成完，前端 15s fetch 超时会误报失败。
+    svc = get_graph_service()
+
     async def _run_first_segment() -> None:
         await run_generation_segment(
             task.task_id,
-            llm.initial_state_from_material(
-                material.model_dump(), need_review=bool(need_review),
-            ),
+            svc.initial_state(material.model_dump(), need_review=bool(need_review)),
         )
 
     asyncio.create_task(_run_first_segment(), name=f"article-gen-first-{event_id}")
@@ -472,19 +531,34 @@ async def resume_generation(task_id: str, decision: str, suggest: str = "") -> G
     decision: pass / modify / reject（由 API 层校验）；suggest 为修改意见。
     返回更新后的任务快照。异常语义：LookupError 任务不存在 / 不在等待态；
     RuntimeError 并发冲突。
-    """
-    from . import llm
 
+    worker 模式：不在这里执行——把审批决定写进任务表（review_decision/
+    review_suggest）并置回 queued，相当于向队列投递一条「恢复指令」，
+    worker 领取后构造 resume Command 从断点继续（消费后清空决定字段）。
+    """
     task = await _get_task_snapshot(task_id)
     if task is None:
         raise LookupError(f"任务不存在：{task_id}")
     if task.status != TASK_STATUS_WAITING_APPROVAL:
         raise RuntimeError(f"任务不在等待审核状态：{task.status}")
 
-    step_input = llm.resume_command(decision, suggest)
-    # 下一段生成是数分钟级 LLM 调用，必须后台执行、POST 立即返回：
+    if execution_mode() == MODE_WORKER:
+        await _update_task(
+            task_id,
+            status=TASK_STATUS_QUEUED,
+            current_step="review_submitted",
+            review_decision=decision,
+            review_suggest=suggest,
+        )
+        _log(f"审批决定已入队：{task_id} decision={decision}（等待 worker 领取恢复）")
+        return await _get_task_snapshot(task_id) or task
+
+    # inline 模式：下一段生成是数分钟级 LLM 调用，必须后台执行、POST 立即返回：
     # 同步等待会撞上前端 15s fetch 超时，被误报为「网络错误」，
     # 而工作流其实还在正常跑（前端却已标记失败并停轮询）。
+    from .graph.service import get_graph_service
+
+    step_input = get_graph_service().resume_command(decision, suggest)
     await _update_task(task_id, status=TASK_STATUS_RUNNING, current_step="running")
 
     async def _run_resume_segment() -> None:
@@ -523,6 +597,9 @@ async def task_in_progress(event_id: int) -> bool:
 async def recover_stale_tasks() -> int:
     """服务启动时接续上次进程遗留的 running/queued 任务（断点续跑）。
 
+    仅 inline 模式执行：worker 模式下接管由 worker 进程的心跳扫描负责
+    （API 进程不抢任务的执行权，避免与 worker 双重消费）。
+
     处理策略（尽量从报错节点继续，而不是一律标失败让用户重来）：
       - checkpoint 停在未答复的 interrupt：还原成 waiting_approval，等前端审批；
       - checkpoint 存在：传 None 续跑，LangGraph 重跑最后未完成的节点；
@@ -531,7 +608,11 @@ async def recover_stale_tasks() -> int:
       - waiting_approval 不动——本就在等前端审批。
     返回接续（或还原待审）的任务数。
     """
-    from . import llm
+    if execution_mode() == MODE_WORKER:
+        _log("worker 模式：启动恢复由独立 worker 进程接管，API 跳过")
+        return 0
+
+    from .graph.service import get_graph_service
     from ..core import session_scope
 
     async with session_scope() as session:
@@ -546,8 +627,9 @@ async def recover_stale_tasks() -> int:
             try:
                 has_cp = await _has_checkpoint(thread_id)
                 if has_cp:
-                    interrupt = await asyncio.to_thread(
-                        llm.pending_interrupt, thread_id)
+                    loop = asyncio.get_running_loop()
+                    interrupt = await loop.run_in_executor(
+                        None, get_graph_service().pending_interrupt, thread_id)
             except Exception as exc:
                 _log(f"任务 {row.task_id} 检查点探测失败："
                      f"{type(exc).__name__}: {exc}")
@@ -568,7 +650,7 @@ async def recover_stale_tasks() -> int:
             if material is None:
                 await _fail_task(row.task_id, "服务重启后话题素材已被清理，无法继续生成")
                 continue
-            step_input = llm.initial_state_from_material(
+            step_input = get_graph_service().initial_state(
                 material.model_dump(), need_review=bool(row.need_review))
 
         _log(f"启动恢复：接续任务 {row.task_id}（{row.status} -> running）")
@@ -588,9 +670,10 @@ async def retry_task(task_id: str) -> GenerationTask:
 
     用户在任务中心点「重试」的入口。异常语义：
     LookupError 任务不存在；RuntimeError 任务不是失败态 / 同 event 已有进行中任务。
-    """
-    from . import llm
 
+    worker 模式：仅把任务置回 queued（清错误与领用痕迹），断点续跑的
+    规划由 worker 领取时根据 checkpoint 现场决定。
+    """
     task = await _get_task_snapshot(task_id)
     if task is None:
         raise LookupError(f"任务不存在：{task_id}")
@@ -600,11 +683,23 @@ async def retry_task(task_id: str) -> GenerationTask:
     if existing:
         raise RuntimeError(f"event_busy: {existing}")
 
+    if execution_mode() == MODE_WORKER:
+        await _update_task(
+            task_id, status=TASK_STATUS_QUEUED, error="", finished_at="",
+            current_step="queued", claimed_by="", heartbeat_at="",
+        )
+        _log(f"失败任务已重新入队：{task_id}（等待 worker 领取）")
+        return await _get_task_snapshot(task_id) or task
+
+    from .graph.service import get_graph_service
+    svc = get_graph_service()
+
     has_cp = bool(task.thread_id) and await _has_checkpoint(task.thread_id)
     interrupt: dict | None = None
     if has_cp:
         try:
-            interrupt = await asyncio.to_thread(llm.pending_interrupt, task.thread_id)
+            loop = asyncio.get_running_loop()
+            interrupt = await loop.run_in_executor(None, svc.pending_interrupt, task.thread_id)
         except Exception:
             interrupt = None
     if interrupt:
@@ -621,8 +716,8 @@ async def retry_task(task_id: str) -> GenerationTask:
         material = await get_material_cached(task.event_id)
         if material is None:
             raise LookupError("话题素材已被清理，无法重试")
-        step_input = llm.initial_state_from_material(
-            material.model_dump(), need_review=bool(task.need_review))
+        step_input = svc.initial_state(material.model_dump(),
+                                       need_review=bool(task.need_review))
 
     await _update_task(task_id, status=TASK_STATUS_RUNNING, error="",
                        finished_at="", current_step="running")
@@ -703,10 +798,11 @@ async def migrate_article_columns() -> None:
 
 
 async def migrate_task_columns() -> None:
-    """给存量任务表补 need_review 列（幂等，只对 Postgres 执行）。
+    """给存量任务表补 worker 队列化所需列（幂等，只对 Postgres 执行）。
 
     create_all 只建表不加列：历史库的 article_generation_task 没有
-    need_review 列，重启续跑 queued 任务时需要它重建首段输入。
+    need_review / review_decision / review_suggest / claimed_by /
+    heartbeat_at 列，worker 模式的领取协议依赖它们。
     """
     from sqlalchemy import text
     from ..core.database import get_engine
@@ -714,12 +810,20 @@ async def migrate_task_columns() -> None:
     engine = get_engine()
     if engine.url.get_backend_name() != "postgresql":
         return
+    columns: tuple[tuple[str, str], ...] = (
+        ("need_review", "BOOLEAN NOT NULL DEFAULT TRUE"),
+        ("review_decision", "VARCHAR(32) NOT NULL DEFAULT ''"),
+        ("review_suggest", "TEXT NOT NULL DEFAULT ''"),
+        ("claimed_by", "VARCHAR(64) NOT NULL DEFAULT ''"),
+        ("heartbeat_at", "VARCHAR(40) NOT NULL DEFAULT ''"),
+    )
     async with engine.begin() as conn:
-        try:
-            await conn.execute(text(
-                "ALTER TABLE article_generation_task "
-                "ADD COLUMN IF NOT EXISTS need_review BOOLEAN NOT NULL DEFAULT TRUE",
-            ))
-            _log("任务表 need_review 列就绪")
-        except Exception as exc:
-            _log(f"任务表列迁移跳过：{type(exc).__name__}: {exc}")
+        for name, ddl in columns:
+            try:
+                await conn.execute(text(
+                    f"ALTER TABLE article_generation_task "
+                    f"ADD COLUMN IF NOT EXISTS {name} {ddl}"
+                ))
+            except Exception as exc:
+                _log(f"任务表列迁移跳过 {name}：{type(exc).__name__}: {exc}")
+    _log("任务表 worker 队列化列就绪（need_review/review_*/claimed_by/heartbeat_at）")
